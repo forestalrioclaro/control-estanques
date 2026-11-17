@@ -99,6 +99,17 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 #trendBox svg{width:100%;height:auto;display:block;min-width:600px}
 .swatch{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
 #trendLegend{font-size:.85rem;color:var(--muted);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.ctab{width:100%;border-collapse:collapse;font-size:.92rem}
+.ctab th,.ctab td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+.ctab th{font-size:.8rem;color:var(--muted);font-weight:700}
+.ctab .num{text-align:right;font-variant-numeric:tabular-nums}
+.ctab tfoot td{font-weight:700;border-top:2px solid var(--accent);border-bottom:0}
+.crow{cursor:pointer}
+.crow:hover{background:#f3fbf6}
+.crow.sel{background:#e0f6ea}
+.cup{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.cdetail{margin-top:16px}
+.cdetail h3{margin:0 0 8px;font-size:1rem;font-family:Raleway,Lato,system-ui,sans-serif}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
@@ -106,7 +117,12 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 <header><h1><span class="wm">RIO<span style="color:#fff;opacity:.85">CLARO</span></span> · Control Diario de Estanques · Impregnación</h1></header>
 
 <main>
-  <div class="seg" id="viewSel" style="margin-bottom:12px"><button type="button" data-view="cal" class="on">Calendario</button><button type="button" data-view="trend">Tendencia</button></div>
+  <div class="cup" style="margin-bottom:12px">
+    <label class="btn primary" for="cargaFile" style="cursor:pointer">⬆ Subir informe de cargas (.xlsx)</label>
+    <input type="file" id="cargaFile" accept=".xlsx,.xls" style="display:none">
+    <span class="status" id="cargaUpInfo">Sube el informe una sola vez: carga Automático 1 y Automático 2.</span>
+  </div>
+  <div class="seg" id="viewSel" style="margin-bottom:12px"><button type="button" data-view="cal" class="on">Calendario</button><button type="button" data-view="trend">Tendencia</button><button type="button" data-view="car1">Cargas · Auto 1</button><button type="button" data-view="car2">Cargas · Auto 2</button><button type="button" data-view="carm">Cargas · Manual</button></div>
   <div class="bar">
     <div class="seg" id="impSel">
       <button type="button" data-imp="auto1" class="on">Automático 1</button>
@@ -144,6 +160,16 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
     <div class="seg" id="turnoSel" style="margin-bottom:10px"><button type="button" data-t="Inicio">Inicio</button><button type="button" data-t="Término" class="on">Término</button></div>
     <div id="trendBox"></div>
     <div id="trendLegend"></div>
+  </section>
+
+  <section class="card hidden" id="cargaCard">
+    <div class="cal-head">
+      <button type="button" class="btn" id="cprev" aria-label="Mes anterior">◀</button>
+      <h2 id="cTitle"></h2>
+      <button type="button" class="btn" id="cnext" aria-label="Mes siguiente">▶</button>
+    </div>
+    <div id="cargaBody"></div>
+    <div id="cargaDetail" class="cdetail"></div>
   </section>
 
   <div class="foot">
@@ -758,6 +784,187 @@ function downloadExcel() {
   }
 }
 
+/* ---------- Cargas: informe de impregnación ---------- */
+const CARGAS_FROM = '2026-11-01';
+const CARGA_VIEWS = {
+  car1: { planta: 1,    label: 'Automático 1' },
+  car2: { planta: 2,    label: 'Automático 2' },
+  carm: { planta: null, label: 'Manual' }
+};
+let cargas = [];
+let cargaDay = null;
+const fmt2 = n => Number(n).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fechaCorta = d => `${DOW[(new Date(d + 'T12:00:00').getDay() + 6) % 7]} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
+
+/* KG CCA 60% = (Solución % / 100) × Volumen Utilizado / 0,6, contado UNA sola vez por carga */
+function ccaDeCargas(lines) {
+  const porCarga = new Map();
+  for (const c of lines) {
+    const k = String(c.nCarga);
+    if (!porCarga.has(k)) porCarga.set(k, { sol: c.sol || 0, vol: c.vol || 0 });
+  }
+  let total = 0;
+  for (const g of porCarga.values()) total += (g.sol / 100) * g.vol / 0.6;
+  return total;
+}
+
+async function loadCargas() {
+  checkConfig();
+  const ym = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}`;
+  const url = `${CONFIG.SCRIPT_URL}?action=cargas&month=${ym}&token=${encodeURIComponent(CONFIG.TOKEN)}`;
+  const j = await parseJson(await fetch(url, { cache: 'no-store' }));
+  if (!j.ok) throw new Error(j.error || 'Error al leer cargas');
+  cargas = j.cargas;
+}
+
+async function refreshCargasView(msg) {
+  busy(msg || 'Leyendo cargas…');
+  try {
+    await loadCargas();
+    renderCargas();
+    setStatus(`Cargas al día (${cargas.length} líneas este mes)`);
+  } catch (err) {
+    setStatus('No se pudieron leer las cargas: ' + err.message, true);
+  } finally {
+    idle();
+  }
+}
+
+function renderCargas() {
+  const v = CARGA_VIEWS[view];
+  if (!v) return;
+  $('cTitle').textContent = `${v.label} · ${MESES[cur.getMonth()]} ${cur.getFullYear()}`;
+  if (v.planta == null) {
+    $('cargaBody').innerHTML = '<p class="status">El informe de cargas trae solo las plantas 1 y 2 (Automático 1 y 2). Manual no tiene cargas en este informe.</p>';
+    $('cargaDetail').innerHTML = '';
+    return;
+  }
+  const lines = cargas.filter(c => c.planta === v.planta);
+  const byDay = new Map();
+  for (const c of lines) {
+    if (!byDay.has(c.fecha)) byDay.set(c.fecha, { fecha: c.fecha, m3: 0, kg: 0, lines: [] });
+    const g = byDay.get(c.fecha);
+    g.m3 += c.m3;
+    g.kg += c.kgAj;
+    g.lines.push(c);
+  }
+  const dias = [...byDay.values()].map(d => ({ fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines) }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (!dias.length) {
+    $('cargaBody').innerHTML = '<p class="status">Sin cargas registradas para este mes. Sube el informe para cargarlas.</p>';
+    $('cargaDetail').innerHTML = '';
+    return;
+  }
+  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, cca: a.cca + d.cca }), { m3: 0, kg: 0, cca: 0 });
+  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">KG CCA 60%</th></tr></thead><tbody>';
+  for (const d of dias) {
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${fmt1(d.cca)}</td></tr>`;
+  }
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
+  $('cargaBody').innerHTML = html;
+  renderCargaDetail(v.planta);
+}
+
+function renderCargaDetail(planta) {
+  if (!cargaDay) {
+    $('cargaDetail').innerHTML = '<p class="status">Haz clic en un día para ver el total por N° de carga.</p>';
+    return;
+  }
+  const dayLines = cargas.filter(x => x.planta === planta && x.fecha === cargaDay);
+  const byC = new Map();
+  for (const c of dayLines) {
+    const k = String(c.nCarga);
+    if (!byC.has(k)) byC.set(k, { n: c.nCarga, lineas: 0, m3: 0, kg: 0, sol: c.sol || 0, vol: c.vol || 0 });
+    const g = byC.get(k);
+    g.lineas++;
+    g.m3 += c.m3;
+    g.kg += c.kgAj;
+  }
+  const list = [...byC.values()].map(g => ({ ...g, cca: (g.sol / 100) * g.vol / 0.6 }))
+    .sort((a, b) => Number(a.n) - Number(b.n));
+  const tot = list.reduce((a, g) => ({ lineas: a.lineas + g.lineas, m3: a.m3 + g.m3, kg: a.kg + g.kg, cca: a.cca + g.cca }), { lineas: 0, m3: 0, kg: 0, cca: 0 });
+  let html = `<h3>N° de carga · ${fechaCorta(cargaDay)} · ${CARGA_VIEWS[view].label}</h3>`;
+  html += '<table class="ctab"><thead><tr><th>N° carga</th><th class="num">Líneas</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Solución %</th><th class="num">Volumen</th><th class="num">KG CCA 60%</th></tr></thead><tbody>';
+  for (const g of list) {
+    html += `<tr><td>${g.n}</td><td class="num">${g.lineas}</td><td class="num">${fmt2(g.m3)}</td><td class="num">${fmt1(g.kg)}</td><td class="num">${String(g.sol).replace('.', ',')}</td><td class="num">${fmt0(g.vol)}</td><td class="num">${fmt1(g.cca)}</td></tr>`;
+  }
+  html += `</tbody><tfoot><tr><td>Total del día</td><td class="num">${tot.lineas}</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td></td><td></td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
+  $('cargaDetail').innerHTML = html;
+}
+
+/* Fecha Carga puede venir como texto, número de Excel o Date */
+function tsOf(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) {
+    const t = v;
+    return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+  }
+  if (typeof v === 'number') {
+    const t = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return tsOf(t);
+  }
+  return String(v).trim();
+}
+
+$('cargaBody').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-dia]');
+  if (!tr) return;
+  cargaDay = cargaDay === tr.dataset.dia ? null : tr.dataset.dia;
+  renderCargas();
+});
+
+$('cargaFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  busy('Leyendo informe…');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
+    const recs = [];
+    for (const r of rows) {
+      const ts = tsOf(r['Fecha Carga']);
+      if (!ts) continue;
+      const fecha = ts.slice(0, 10);
+      if (fecha < CARGAS_FROM) continue;
+      const producto = String(r['Producto'] || '').trim();
+      const planta = Number(r['N° Planta']);
+      const clave = [ts, planta, r['N° Carga'], producto, r['Dimensión'], r['Cantidad'], r['M3'], r['Total KG Ajustados']].join('|');
+      recs.push({
+        clave, fecha, hora: ts.slice(11, 19), planta,
+        nCarga: r['N° Carga'], producto,
+        cantidad: Number(r['Cantidad']), m3: Number(r['M3']) || 0, kgAj: Number(r['Total KG Ajustados']) || 0,
+        sol: Number(r['Solución']) || 0, vol: Number(r['Volumen Utilizado']) || 0
+      });
+    }
+    if (!recs.length) { setStatus('El informe no tiene cargas desde ' + CARGAS_FROM, true); return; }
+    let nuevas = 0, existentes = 0;
+    const LOTE = 200;
+    for (let i = 0; i < recs.length; i += LOTE) {
+      busy(`Guardando cargas ${Math.min(i + LOTE, recs.length)}/${recs.length}…`);
+      const res = await fetch(CONFIG.SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ token: CONFIG.TOKEN, action: 'cargasUpsert', records: recs.slice(i, i + LOTE) })
+      });
+      const j = await parseJson(res);
+      if (!j.ok) throw new Error(j.error || 'No se pudo guardar');
+      nuevas += j.nuevas;
+      existentes += j.existentes;
+    }
+    busy('Actualizando métricas…');
+    await loadCargas();
+    renderCargas();
+    $('cargaUpInfo').textContent = `Última carga: ${nuevas} líneas nuevas · ${existentes} ya existían`;
+    setStatus(`Informe cargado: ${nuevas} nuevas, ${existentes} ya existían`);
+  } catch (err) {
+    setStatus('No se pudo cargar el informe: ' + err.message, true);
+  } finally {
+    idle();
+    e.target.value = '';
+  }
+});
+
 /* ---------- Eventos ---------- */
 $('impSel').addEventListener('click', e => {
   const b = e.target.closest('button[data-imp]');
@@ -771,10 +978,12 @@ $('viewSel').addEventListener('click', e => {
   if (!b) return;
   view = b.dataset.view;
   document.querySelectorAll('#viewSel button').forEach(x => x.classList.toggle('on', x === b));
+  const isCar = !!CARGA_VIEWS[view];
   $('calCard').classList.toggle('hidden', view !== 'cal');
   $('trendCard').classList.toggle('hidden', view !== 'trend');
-  $('impSel').classList.toggle('hidden', view === 'trend');
-  renderTrend();
+  $('cargaCard').classList.toggle('hidden', !isCar);
+  $('impSel').classList.toggle('hidden', view !== 'cal');
+  if (isCar) { cargaDay = null; refreshCargasView(); } else { renderTrend(); }
 });
 $('turnoSel').addEventListener('click', e => {
   const b = e.target.closest('button[data-t]');
@@ -782,6 +991,8 @@ $('turnoSel').addEventListener('click', e => {
   trendTurno = b.dataset.t;
   renderTrend();
 });
+$('cprev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); cargaDay = null; refreshCargasView(); };
+$('cnext').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); cargaDay = null; refreshCargasView(); };
 $('tprev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); };
 $('tnext').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); render(); };
 $('prev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); };
