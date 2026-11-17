@@ -107,8 +107,9 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 .ctab .num{text-align:right;font-variant-numeric:tabular-nums}
 .ctab tfoot td{font-weight:700;border-top:2px solid var(--accent);border-bottom:0}
 .ctab td .c{display:inline;margin-left:6px;font-size:.7rem;color:#9a9ea4;font-weight:400;white-space:nowrap}
-.ctab td.amb{background:#fdf6e3}
-.ctab td.red{background:#fbeeee}
+#cargaBody .ctab th,#cargaBody .ctab td{text-align:center}
+#cargaBody .ctab th:first-child,#cargaBody .ctab td:first-child{text-align:left}
+#cargaBody .ctab th+th,#cargaBody .ctab td+td{border-left:1px solid #f1f2f4}
 .crow{cursor:pointer}
 .crow:hover{background:#f3fbf6}
 .crow.sel{background:#e0f6ea}
@@ -849,7 +850,7 @@ function cmpCell(val, ref) {
   const d = val - ref;
   const p = ref ? d / ref * 100 : 0;
   const a = Math.abs(p);
-  const cls = a < 2 ? '' : a < 5 ? ' amb' : ' red';
+  const cls = '';
   const sg = d > 0 ? '+' : '';
   const pTxt = (p > 0 ? '+' : '') + fmt1(p) + '%';
   return `<td class="num${cls}">${fmt1(val)} kg<span class="c">${sg}${fmt1(d)} kg · ${pTxt}</span></td>`;
