@@ -7,22 +7,23 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
-  --bg:#f4f6f8;--card:#fff;--ink:#1d2733;--muted:#6b7785;--line:#dde3ea;
-  --accent:#1f6f4a;
-  --plomo-bg:#e4e7eb;--plomo-ink:#4b5563;
-  --verde-bg:#dcf2e4;--verde-ink:#1f6f4a;
+  --bg:#f4f5f6;--card:#fff;--ink:#1f2326;--muted:#5f6268;--line:#dcdfe3;
+  --accent:#00B255;--accent-ink:#00843f;
+  --plomo-bg:#e6e6e8;--plomo-ink:#4a4b4e;
+  --verde-bg:#e0f6ea;--verde-ink:#00843f;
   --warn:#b91c1c
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+body{margin:0;font-family:Lato,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
 header{background:var(--accent);color:#fff;padding:14px 20px}
-header h1{margin:0;font-size:1.15rem;font-weight:700}
+header h1{margin:0;font-size:1.2rem;font-weight:700;font-family:Raleway,Lato,system-ui,sans-serif;letter-spacing:.2px}
+header .wm{font-weight:900;letter-spacing:.5px}
 main{max-width:1100px;margin:0 auto;padding:16px}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
 .bar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .seg{display:inline-flex;flex-wrap:wrap;background:#e3e9ef;border-radius:10px;padding:4px;gap:2px}
 .seg button{border:0;background:transparent;padding:9px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);font-size:.95rem}
-.seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.seg button.on{background:#fff;color:var(--accent-ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
 .cal-head h2{margin:0;font-size:1.05rem;text-transform:capitalize}
@@ -47,7 +48,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .status{font-size:.85rem;color:var(--muted)}
 .status.err{color:var(--warn)}
 /* indicador de trabajo */
-.busy{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--accent);font-weight:600;background:#eaf6ef;border-radius:8px;padding:6px 10px}
+.busy{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--accent-ink);font-weight:600;background:#eaf6ef;border-radius:8px;padding:6px 10px}
 .busy.hidden{display:none}
 .spin{width:14px;height:14px;border:2px solid #b9dcc8;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -86,9 +87,10 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
   .g3{grid-template-columns:1fr 1fr}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
-<header><h1>Control Diario de Estanques · Impregnación</h1></header>
+<header><h1><span class="wm">RIO<span style="color:#fff;opacity:.85">CLARO</span></span> · Control Diario de Estanques · Impregnación</h1></header>
 
 <main>
   <div class="bar">
