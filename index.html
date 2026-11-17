@@ -874,12 +874,12 @@ function renderCargas() {
     return;
   }
   const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, kg6: a.kg6 + d.kg / 0.6, cca: a.cca + d.cca, ret: a.ret + d.ret, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, kg6: 0, cca: 0, ret: 0, inv: 0 });
-  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Diferencia por estanques</th><th class="num">Total CCA por carga</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
+  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">Total CCA por carga</th><th class="num">Diferencia por estanques</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
   for (const d of dias) {
     const invTxt = d.inv == null ? '—' : fmt1(d.inv);
-    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.kg / 0.6)}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${fmt1(d.ret)}</td></tr>`;
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${fmt1(d.ret)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.kg6)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
 }
