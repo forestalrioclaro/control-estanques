@@ -19,6 +19,7 @@ header{background:var(--accent);color:#fff;padding:14px 20px}
 header h1{margin:0;font-size:1.15rem;font-weight:700}
 main{max-width:1100px;margin:0 auto;padding:16px}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .seg{display:inline-flex;flex-wrap:wrap;background:#e3e9ef;border-radius:10px;padding:4px;gap:2px}
 .seg button{border:0;background:transparent;padding:9px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);font-size:.95rem}
 .seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.14)}
@@ -45,6 +46,11 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
 .status{font-size:.85rem;color:var(--muted)}
 .status.err{color:var(--warn)}
+/* indicador de trabajo */
+.busy{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--accent);font-weight:600;background:#eaf6ef;border-radius:8px;padding:6px 10px}
+.busy.hidden{display:none}
+.spin{width:14px;height:14px;border:2px solid #b9dcc8;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:12px;z-index:10}
 .modal.open{display:flex}
 .sheet{background:#fff;border-radius:14px;width:min(920px,100%);max-height:94vh;overflow:auto;padding:18px}
@@ -66,7 +72,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 .calc td{padding:3px 0}
 .calc td:last-child{text-align:right;font-variant-numeric:tabular-nums}
 .calc tr.tot td{font-weight:700;border-top:1px solid #cfd6de;padding-top:6px}
-.note{font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.draft{font-size:.78rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 8px}
 .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 @media (max-width:720px){
   .day{min-height:66px;padding:4px}
@@ -88,7 +94,11 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
       <button type="button" data-imp="auto2">Automático 2</button>
       <button type="button" data-imp="manual">Manual</button>
     </div>
-    <div class="status" id="status">Cargando datos…</div>
+    <div class="bar-right">
+      <div class="busy hidden" id="busy" role="status" aria-live="polite"><span class="spin"></span><span id="busyTxt"></span></div>
+      <button type="button" class="btn" id="btnRefresh">↻ Actualizar datos</button>
+      <div class="status" id="status"></div>
+    </div>
   </div>
 
   <section class="card">
@@ -117,6 +127,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
   <form class="sheet" id="form" autocomplete="off">
     <h3 id="fTitle"></h3>
     <div class="sub" id="fSub"></div>
+    <div class="draft hidden" id="draftNote">Borrador recuperado: hay datos escritos que aún no se han guardado.</div>
 
     <div class="top">
       <label>Responsable
@@ -137,14 +148,14 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
         <div class="state" id="i_state"></div>
         <div class="g2 auto-only">
           <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="i_n1"></label>
-          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="i_c1"></label>
+          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 2.167" id="i_c1"></label>
           <label>Estanque 2 · Nivel<input type="number" step="any" inputmode="decimal" id="i_n2"></label>
-          <label>Estanque 2 · C%<input type="number" step="any" inputmode="decimal" id="i_c2"></label>
+          <label>Estanque 2 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 3.071" id="i_c2"></label>
           <label class="full">Estanque CCA · kg (balanza)<input type="number" step="any" inputmode="decimal" id="i_cca"></label>
         </div>
         <div class="g2 manual-only">
           <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="i_mn1"></label>
-          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="i_mc1"></label>
+          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 1.819" id="i_mc1"></label>
           <label>CCA · Altura<input type="number" step="any" inputmode="decimal" id="i_alt"></label>
           <label>CCA · Densidad<input type="number" step="any" inputmode="decimal" id="i_dens"></label>
         </div>
@@ -160,14 +171,14 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
         <div class="state" id="t_state"></div>
         <div class="g2 auto-only">
           <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="t_n1"></label>
-          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="t_c1"></label>
+          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 2.167" id="t_c1"></label>
           <label>Estanque 2 · Nivel<input type="number" step="any" inputmode="decimal" id="t_n2"></label>
-          <label>Estanque 2 · C%<input type="number" step="any" inputmode="decimal" id="t_c2"></label>
+          <label>Estanque 2 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 3.180" id="t_c2"></label>
           <label class="full">Estanque CCA · kg (balanza)<input type="number" step="any" inputmode="decimal" id="t_cca"></label>
         </div>
         <div class="g2 manual-only">
           <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="t_mn1"></label>
-          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="t_mc1"></label>
+          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 1.780" id="t_mc1"></label>
           <label>CCA · Altura<input type="number" step="any" inputmode="decimal" id="t_alt"></label>
           <label>CCA · Densidad<input type="number" step="any" inputmode="decimal" id="t_dens"></label>
         </div>
@@ -176,7 +187,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
     </div>
 
     <div class="actions">
-      <button type="button" class="btn" id="fCancel">Cancelar</button>
+      <button type="button" class="btn" id="fCancel">Cerrar</button>
       <button type="submit" class="btn primary" id="fSave">Guardar</button>
     </div>
     <div class="status" id="fMsg" style="margin-top:8px"></div>
@@ -203,6 +214,7 @@ const TURNOS = [
 ];
 const FIELDS_AUTO   = ['n1','c1','n2','c2','cca'];
 const FIELDS_MANUAL = ['n1','c1','alt','dens'];
+const ALL_FIELDS    = ['n1','c1','n2','c2','cca','mn1','mc1','alt','dens'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
@@ -220,14 +232,33 @@ const fmt0 = n => Number(n).toLocaleString('es-CL', { maximumFractionDigits: 0 }
 const fmt1 = n => Number(n).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const round2 = x => Math.round(x * 100) / 100;
 
+/* ---------- Mensajes ---------- */
+function busy(msg) {
+  $('busyTxt').textContent = msg;
+  $('busy').classList.remove('hidden');
+  document.querySelectorAll('button').forEach(b => { if (b.id !== 'fCancel') b.disabled = true; });
+}
+function idle() {
+  $('busy').classList.add('hidden');
+  document.querySelectorAll('button').forEach(b => b.disabled = false);
+}
 function setStatus(msg, err = false) {
   const el = $('status');
   el.textContent = msg;
   el.className = 'status' + (err ? ' err' : '');
 }
+function showMsg(msg, err) {
+  $('fMsg').className = 'status' + (err ? ' err' : '');
+  $('fMsg').textContent = msg;
+}
+
+/* ---------- Porcentaje <-> decimal ----------
+   La persona ingresa C en %, ej: 2.167  ->  se guarda 0.02167 (como en el Excel) */
+const pctToDec = p => (p == null ? null : p / 100);
+const decToPct = c => (c == null || c === '' ? '' : String(Number((Number(c) * 100).toFixed(5))));
 
 /* ---------- Cálculos (replican las fórmulas del Excel) ---------- */
-// Estanque: kg activos = Nivel x C%  ;  KG CCA 60% = kg activos / 0.6
+// Estanque: kg activos = Nivel x C ;  KG CCA 60% = kg activos / 0.6
 // CCA automático: kg de balanza (directo)
 // CCA manual: Altura x Densidad
 function calcRec(tipo, d) {
@@ -253,21 +284,26 @@ function calcRec(tipo, d) {
   };
 }
 
-/* Lee un turno del formulario. pre = 'i' (inicio) o 't' (término) */
+/* Lee un turno del formulario. pre = 'i' (inicio) o 't' (término). C viene en % y se pasa a decimal */
 function readCol(pre, tipo) {
-  const v = id => { const x = $(pre + '_' + id).value; return x === '' ? null : Number(x); };
+  const raw = id => { const x = $(pre + '_' + id).value; return x === '' ? null : Number(x); };
   if (tipo === 'auto') {
-    return { n1: v('n1'), c1: v('c1'), n2: v('n2'), c2: v('c2'), ccaBalanza: v('cca'), altura: null, dens: null };
+    return { n1: raw('n1'), c1: pctToDec(raw('c1')), n2: raw('n2'), c2: pctToDec(raw('c2')), ccaBalanza: raw('cca'), altura: null, dens: null };
   }
-  return { n1: v('mn1'), c1: v('mc1'), n2: null, c2: null, ccaBalanza: null, altura: v('alt'), dens: v('dens') };
+  return { n1: raw('mn1'), c1: pctToDec(raw('mc1')), n2: null, c2: null, ccaBalanza: null, altura: raw('alt'), dens: raw('dens') };
+}
+
+function fieldId(pre, f, tipo) {
+  if (tipo === 'manual') {
+    if (f === 'n1') return pre + '_mn1';
+    if (f === 'c1') return pre + '_mc1';
+  }
+  return pre + '_' + f;
 }
 
 function touched(pre, tipo) {
-  const ids = (tipo === 'auto' ? FIELDS_AUTO : FIELDS_MANUAL).map(f => {
-    if (tipo === 'manual') return pre + '_' + (f === 'n1' ? 'mn1' : f === 'c1' ? 'mc1' : f);
-    return pre + '_' + f;
-  });
-  return ids.some(id => $(id).value !== '');
+  const fields = tipo === 'auto' ? FIELDS_AUTO : FIELDS_MANUAL;
+  return fields.some(f => $(fieldId(pre, f, tipo)).value !== '');
 }
 
 function complete(tipo, d) {
@@ -300,6 +336,31 @@ function updateCalc() {
   }
 }
 
+/* ---------- Borrador local (para no perder lo escrito) ---------- */
+const draftKey = (ds, id) => `draft|${ds}|${id}`;
+
+function readDraft(ds, id) {
+  try { return JSON.parse(localStorage.getItem(draftKey(ds, id)) || 'null'); } catch (_) { return null; }
+}
+function saveDraft() {
+  if (!editingDate) return;
+  const data = { i: {}, t: {}, resp: $('fResp').value, obs: $('fObs').value };
+  for (const t of TURNOS) for (const f of ALL_FIELDS) {
+    const el = $(t.pre + '_' + f);
+    if (el && el.value !== '') data[t.pre][f] = el.value;
+  }
+  try { localStorage.setItem(draftKey(editingDate, imp), JSON.stringify(data)); } catch (_) {}
+  $('draftNote').classList.remove('hidden');
+}
+function clearDraftTurn(pre) {
+  const key = draftKey(editingDate, imp);
+  const d = readDraft(editingDate, imp);
+  if (!d) return;
+  d[pre] = {};
+  const hasAny = Object.keys(d.i || {}).length || Object.keys(d.t || {}).length;
+  try { if (hasAny) localStorage.setItem(key, JSON.stringify(d)); else localStorage.removeItem(key); } catch (_) {}
+}
+
 /* ---------- Comunicación con Google Sheets (Apps Script) ---------- */
 function checkConfig() {
   if (!CONFIG.SCRIPT_URL || CONFIG.SCRIPT_URL.startsWith('PEGAR')) {
@@ -316,11 +377,24 @@ async function parseJson(res) {
 async function loadAll() {
   checkConfig();
   const url = `${CONFIG.SCRIPT_URL}?action=list&token=${encodeURIComponent(CONFIG.TOKEN)}`;
-  const j = await parseJson(await fetch(url));
-  if (!j.ok) throw new Error(j.error || 'Error al cargar');
+  const j = await parseJson(await fetch(url, { cache: 'no-store' }));
+  if (!j.ok) throw new Error(j.error || 'Error al leer los datos');
   records = j.records;
   byKey = new Map();
   for (const r of records) byKey.set(`${r.fecha}|${r.impLabel}|${r.turno}`, r);
+}
+
+async function refresh(msgBusy, msgOk) {
+  busy(msgBusy);
+  try {
+    await loadAll();
+    render();
+    setStatus(msgOk || `Datos al día (${records.length} registros)`);
+  } catch (err) {
+    setStatus('No se pudieron leer los datos: ' + err.message, true);
+  } finally {
+    idle();
+  }
 }
 
 async function saveRecord(rec) {
@@ -368,7 +442,7 @@ function openForm(ds) {
   editingDate = ds;
   const [y, m, d] = ds.split('-').map(Number);
   $('fTitle').textContent = `${IMP[imp].label} · ${d} de ${MESES[m - 1]} de ${y}`;
-  $('fSub').textContent = 'KG CCA 60% · Ingresa el inicio y el término del turno. Puedes llenar uno solo.';
+  $('fSub').textContent = 'KG CCA 60% · Ingresa el inicio y el término del turno. Puedes llenar uno solo. C se escribe en porcentaje (ej: 2.167).';
   loadFormFor();
   showMsg('', false);
   $('modal').classList.add('open');
@@ -378,38 +452,41 @@ function setVal(id, val) { $(id).value = (val == null) ? '' : val; }
 
 function loadFormFor() {
   const tipo = IMP[imp].tipo;
-  const autoBlocks = document.querySelectorAll('.auto-only');
-  const manualBlocks = document.querySelectorAll('.manual-only');
-  autoBlocks.forEach(el => el.classList.toggle('hidden', tipo !== 'auto'));
-  manualBlocks.forEach(el => el.classList.toggle('hidden', tipo !== 'manual'));
+  document.querySelectorAll('.auto-only').forEach(el => el.classList.toggle('hidden', tipo !== 'auto'));
+  document.querySelectorAll('.manual-only').forEach(el => el.classList.toggle('hidden', tipo !== 'manual'));
 
   for (const t of TURNOS) {
     const rec = byKey.get(`${editingDate}|${IMP[imp].label}|${t.key}`);
     if (tipo === 'auto') {
-      setVal(t.pre + '_n1', rec?.n1); setVal(t.pre + '_c1', rec?.c1);
-      setVal(t.pre + '_n2', rec?.n2); setVal(t.pre + '_c2', rec?.c2);
+      setVal(t.pre + '_n1', rec?.n1); setVal(t.pre + '_c1', decToPct(rec?.c1));
+      setVal(t.pre + '_n2', rec?.n2); setVal(t.pre + '_c2', decToPct(rec?.c2));
       setVal(t.pre + '_cca', rec?.ccaBalanza);
     } else {
-      setVal(t.pre + '_mn1', rec?.n1); setVal(t.pre + '_mc1', rec?.c1);
+      setVal(t.pre + '_mn1', rec?.n1); setVal(t.pre + '_mc1', decToPct(rec?.c1));
       setVal(t.pre + '_alt', rec?.altura); setVal(t.pre + '_dens', rec?.dens);
     }
-    $(t.pre + '_state').textContent = rec
-      ? 'Ya registrado: al guardar se reemplaza.'
-      : 'Sin registro todavía.';
+    $(t.pre + '_state').textContent = rec ? 'Ya registrado: al guardar se reemplaza.' : 'Sin registro todavía.';
   }
-  // Responsable y observaciones: del último registro del día si existe
   const any = byKey.get(`${editingDate}|${IMP[imp].label}|Inicio`) || byKey.get(`${editingDate}|${IMP[imp].label}|Término`);
   $('fResp').value = any?.responsable || localStorage.getItem('ultimoResp') || '';
   $('fObs').value = any?.obs || '';
+
+  // Si hay un borrador sin guardar, se recupera encima de los datos guardados
+  const draft = readDraft(editingDate, imp);
+  $('draftNote').classList.add('hidden');
+  if (draft) {
+    for (const t of TURNOS) for (const f in (draft[t.pre] || {})) {
+      const id = t.pre + '_' + f;
+      if ($(id)) $(id).value = draft[t.pre][f];
+    }
+    if (draft.resp) $('fResp').value = draft.resp;
+    if (draft.obs) $('fObs').value = draft.obs;
+    $('draftNote').classList.remove('hidden');
+  }
   updateCalc();
 }
 
 function closeForm() { $('modal').classList.remove('open'); }
-
-function showMsg(msg, err) {
-  $('fMsg').className = 'status' + (err ? ' err' : '');
-  $('fMsg').textContent = msg;
-}
 
 function buildRec(turno, d, tipo, resp, obs) {
   const c = calcRec(tipo, d);
@@ -446,50 +523,66 @@ async function onSave(e) {
       errores.push(`Completa todos los campos de ${t.key.toLowerCase()} de turno o déjalo vacío.`);
       continue;
     }
-    toSave.push({ turno: t.key, rec: buildRec(t.key, d, tipo, resp, obs) });
+    toSave.push({ pre: t.pre, turno: t.key, rec: buildRec(t.key, d, tipo, resp, obs) });
   }
   if (errores.length) { showMsg(errores.join(' '), true); return; }
   if (!toSave.length) { showMsg('Ingresa al menos un turno (inicio o término).', true); return; }
 
-  const btn = $('fSave');
-  btn.disabled = true;
-  showMsg('Guardando…', false);
+  const guardados = [];
   try {
-    for (const s of toSave) await saveRecord(s.rec);
+    busy('Guardando datos…');
+    for (const s of toSave) {
+      busy(`Guardando ${s.turno.toLowerCase()} de turno…`);
+      await saveRecord(s.rec);
+      guardados.push(s.turno);
+      clearDraftTurn(s.pre);
+    }
     try { if (resp) localStorage.setItem('ultimoResp', resp); } catch (_) {}
+    busy('Actualizando calendario…');
     await loadAll();
     render();
+    idle();
     closeForm();
-    setStatus(`Guardado: ${IMP[imp].label} · ${editingDate} · ${toSave.map(s => s.turno.toLowerCase()).join(' y ')}`);
+    setStatus(`Guardado: ${IMP[imp].label} · ${editingDate} · ${guardados.map(g => g.toLowerCase()).join(' y ')}`);
   } catch (err) {
-    showMsg(err.message, true);
-  } finally {
-    btn.disabled = false;
+    idle();
+    showMsg(
+      (guardados.length ? `Se guardó: ${guardados.join(' y ')}. ` : '') +
+      `No se pudo guardar: ${err.message}. Tus datos siguen en pantalla y en el borrador; vuelve a intentar.`,
+      true
+    );
+    // refresca para que lo ya guardado quede visible como "Ya registrado"
+    if (guardados.length) { try { await loadAll(); render(); } catch (_) {} }
   }
 }
 
 /* ---------- Excel resumen (solo KG CCA 60%) ---------- */
 function downloadExcel() {
-  if (!records.length) { setStatus('No hay datos para exportar', true); return; }
-  const idOf = lbl => Object.keys(IMP).find(k => IMP[k].label === lbl);
-  const groups = new Map();
-  for (const r of records) {
-    const id = idOf(r.impLabel) || r.impLabel;
-    const key = `${r.fecha}|${id}`;
-    if (!groups.has(key)) groups.set(key, { fecha: r.fecha, label: r.impLabel, ord: Object.keys(IMP).indexOf(id), ini: null, ter: null });
-    const g = groups.get(key);
-    if (r.turno === 'Inicio') g.ini = r.total; else g.ter = r.total;
-  }
-  const list = [...groups.values()].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.ord - b.ord);
-  const rows = [['Fecha', 'Impregnadora', 'KG CCA 60% Inicio', 'KG CCA 60% Término']];
-  for (const g of list) rows.push([g.fecha, g.label, g.ini, g.ter]);
+  busy('Preparando Excel…');
+  try {
+    if (!records.length) { setStatus('No hay datos para exportar', true); return; }
+    const idOf = lbl => Object.keys(IMP).find(k => IMP[k].label === lbl);
+    const groups = new Map();
+    for (const r of records) {
+      const id = idOf(r.impLabel) || r.impLabel;
+      const key = `${r.fecha}|${id}`;
+      if (!groups.has(key)) groups.set(key, { fecha: r.fecha, label: r.impLabel, ord: Object.keys(IMP).indexOf(id), ini: null, ter: null });
+      const g = groups.get(key);
+      if (r.turno === 'Inicio') g.ini = r.total; else g.ter = r.total;
+    }
+    const list = [...groups.values()].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.ord - b.ord);
+    const rows = [['Fecha', 'Impregnadora', 'KG CCA 60% Inicio', 'KG CCA 60% Término']];
+    for (const g of list) rows.push([g.fecha, g.label, g.ini, g.ter]);
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'KG CCA 60%');
-  XLSX.writeFile(wb, `Resumen_KG_CCA60_${todayIso()}.xlsx`);
-  setStatus(`Excel descargado con ${list.length} filas`);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'KG CCA 60%');
+    XLSX.writeFile(wb, `Resumen_KG_CCA60_${todayIso()}.xlsx`);
+    setStatus(`Excel descargado con ${list.length} filas`);
+  } finally {
+    idle();
+  }
 }
 
 /* ---------- Eventos ---------- */
@@ -502,13 +595,19 @@ $('impSel').addEventListener('click', e => {
 });
 $('prev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); };
 $('next').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); render(); };
+$('btnRefresh').onclick = () => refresh('Leyendo datos…', 'Datos actualizados');
 $('cal').addEventListener('click', e => {
   const b = e.target.closest('button[data-date]');
   if (b) openForm(b.dataset.date);
 });
 TURNOS.forEach(t => {
-  ['n1','c1','n2','c2','cca','mn1','mc1','alt','dens'].forEach(f => $(t.pre + '_' + f).addEventListener('input', updateCalc));
+  ALL_FIELDS.forEach(f => {
+    const el = $(t.pre + '_' + f);
+    if (el) el.addEventListener('input', () => { updateCalc(); saveDraft(); });
+  });
 });
+$('fResp').addEventListener('input', saveDraft);
+$('fObs').addEventListener('input', saveDraft);
 $('fCancel').onclick = closeForm;
 $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeForm(); });
 $('form').addEventListener('submit', onSave);
@@ -517,9 +616,7 @@ $('btnExcel').onclick = downloadExcel;
 /* ---------- Inicio ---------- */
 renderDows();
 render();
-loadAll()
-  .then(() => { render(); setStatus(`Datos cargados (${records.length} registros)`); })
-  .catch(err => setStatus(err.message, true));
+refresh('Cargando datos…', null);
 </script>
 </body>
 </html>
