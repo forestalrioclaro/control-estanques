@@ -6,7 +6,13 @@
 <title>Control Diario Estanques · Impregnación</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--ink:#1d2733;--muted:#6b7785;--line:#dde3ea;--accent:#1f6f4a;--ini:#1d4ed8;--ter:#b45309;--warn:#b91c1c}
+:root{
+  --bg:#f4f6f8;--card:#fff;--ink:#1d2733;--muted:#6b7785;--line:#dde3ea;
+  --accent:#1f6f4a;
+  --plomo-bg:#e4e7eb;--plomo-ink:#4b5563;
+  --verde-bg:#dcf2e4;--verde-ink:#1f6f4a;
+  --warn:#b91c1c
+}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
 header{background:var(--accent);color:#fff;padding:14px 20px}
@@ -24,43 +30,50 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .btn:disabled{opacity:.5;cursor:default}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .dow{font-size:.75rem;color:var(--muted);text-align:center;font-weight:600;padding:4px 0}
-.day{min-height:80px;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;background:#fff;display:flex;flex-direction:column;gap:3px;text-align:left;font:inherit;color:inherit}
+.day{min-height:86px;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;background:#fff;display:flex;flex-direction:column;gap:4px;text-align:left;font:inherit;color:inherit}
 .day:hover{border-color:var(--accent)}
 .day.empty{visibility:hidden;cursor:default}
 .day.today{outline:2px solid var(--accent)}
 .day.weekend{background:#fafbfc}
 .dnum{font-size:.8rem;font-weight:700}
-.val{font-size:.78rem;white-space:nowrap;font-variant-numeric:tabular-nums}
-.val.ini{color:var(--ini)}
-.val.ter{color:var(--ter)}
+.chip{display:block;font-size:.72rem;font-weight:600;padding:2px 6px;border-radius:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.ini{background:var(--plomo-bg);color:var(--plomo-ink)}
+.chip.ter{background:var(--verde-bg);color:var(--verde-ink)}
 .miss{font-size:.7rem;color:#9aa4b0}
-.legend{font-size:.8rem;color:var(--muted);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+.legend{font-size:.8rem;color:var(--muted);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.legend .chip{display:inline-block}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
 .status{font-size:.85rem;color:var(--muted)}
 .status.err{color:var(--warn)}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:12px;z-index:10}
 .modal.open{display:flex}
-.sheet{background:#fff;border-radius:14px;width:min(580px,100%);max-height:94vh;overflow:auto;padding:18px}
+.sheet{background:#fff;border-radius:14px;width:min(920px,100%);max-height:94vh;overflow:auto;padding:18px}
 .sheet h3{margin:0 0 2px;font-size:1.05rem}
 .sub{color:var(--muted);font-size:.88rem;margin-bottom:12px}
+.top{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-bottom:12px}
+.turnos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.col{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.col-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.col-head strong{font-size:.95rem}
+.col .state{font-size:.78rem;color:var(--muted);min-height:1.1em}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.g2 .full{grid-column:1 / -1}
+.full{grid-column:1 / -1}
 label{display:flex;flex-direction:column;font-size:.82rem;color:var(--muted);gap:4px;font-weight:600}
 input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px solid #c6ced8;border-radius:8px;color:var(--ink);background:#fff;width:100%}
-fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px}
-legend{font-size:.85rem;font-weight:700;padding:0 6px}
 .hidden{display:none !important}
-.calc{background:#f0f7f3;border-radius:10px;padding:10px 12px;font-size:.88rem;margin-bottom:12px}
+.calc{background:#f5f7f9;border-radius:10px;padding:10px 12px;font-size:.85rem}
 .calc table{width:100%;border-collapse:collapse}
 .calc td{padding:3px 0}
 .calc td:last-child{text-align:right;font-variant-numeric:tabular-nums}
-.calc tr.tot td{font-weight:700;border-top:1px solid #b9d9c8;padding-top:6px}
-.note{font-size:.82rem;color:var(--muted);margin-bottom:10px}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
-@media (max-width:640px){
-  .day{min-height:64px;padding:4px}
-  .val{font-size:.66rem}
+.calc tr.tot td{font-weight:700;border-top:1px solid #cfd6de;padding-top:6px}
+.note{font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+@media (max-width:720px){
+  .day{min-height:66px;padding:4px}
+  .chip{font-size:.62rem;padding:1px 3px}
   .grid{gap:3px}
+  .turnos{grid-template-columns:1fr}
+  .top{grid-template-columns:1fr}
   .g2{grid-template-columns:1fr}
 }
 </style>
@@ -87,8 +100,8 @@ legend{font-size:.85rem;font-weight:700;padding:0 6px}
     <div class="grid" id="dows"></div>
     <div class="grid" id="cal"></div>
     <div class="legend">
-      <span><b style="color:var(--ini)">Ini</b> = KG CCA 60% inicio de turno</span>
-      <span><b style="color:var(--ter)">Ter</b> = KG CCA 60% término de turno</span>
+      <span class="chip ini">Inicio</span><span>KG CCA 60% al inicio de turno</span>
+      <span class="chip ter">Término</span><span>KG CCA 60% al término de turno</span>
       <span>Haz clic en un día para ingresar o revisar datos</span>
     </div>
   </section>
@@ -99,65 +112,68 @@ legend{font-size:.85rem;font-weight:700;padding:0 6px}
   </div>
 </main>
 
-<!-- Formulario -->
+<!-- Formulario: inicio y término lado a lado -->
 <div class="modal" id="modal">
   <form class="sheet" id="form" autocomplete="off">
     <h3 id="fTitle"></h3>
     <div class="sub" id="fSub"></div>
-    <div class="note" id="fNote"></div>
 
-    <div class="g2">
-      <label>Turno
-        <select id="fTurno">
-          <option value="Inicio">Inicio de turno</option>
-          <option value="Término">Término de turno</option>
-        </select>
-      </label>
+    <div class="top">
       <label>Responsable
         <input id="fResp" placeholder="Nombre de quien registra" maxlength="60">
       </label>
+      <label>Observaciones
+        <input id="fObs" maxlength="300" placeholder="Opcional">
+      </label>
     </div>
 
-    <fieldset style="margin-top:12px">
-      <legend>Estanques</legend>
-      <div class="g2">
-        <label>Estanque 1 · Nivel
-          <input type="number" step="any" inputmode="decimal" id="n1">
-        </label>
-        <label>Estanque 1 · C%
-          <input type="number" step="any" inputmode="decimal" id="c1">
-        </label>
-
-        <!-- Solo automáticos -->
-        <div class="g2 full" id="blkAuto" style="display:contents">
-          <label>Estanque 2 · Nivel
-            <input type="number" step="any" inputmode="decimal" id="n2">
-          </label>
-          <label>Estanque 2 · C%
-            <input type="number" step="any" inputmode="decimal" id="c2">
-          </label>
-          <label class="full" style="grid-column:1 / -1">Estanque CCA · kg (balanza)
-            <input type="number" step="any" inputmode="decimal" id="cca">
-          </label>
+    <div class="turnos">
+      <!-- Inicio de turno -->
+      <div class="col" id="col-i">
+        <div class="col-head">
+          <strong>Inicio de turno</strong>
+          <span class="chip ini">Inicio</span>
         </div>
-
-        <!-- Solo manual -->
-        <div id="blkManual" class="full" style="display:contents">
-          <label>Estanque CCA · Altura
-            <input type="number" step="any" inputmode="decimal" id="alt">
-          </label>
-          <label>Estanque CCA · Densidad
-            <input type="number" step="any" inputmode="decimal" id="dens">
-          </label>
+        <div class="state" id="i_state"></div>
+        <div class="g2 auto-only">
+          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="i_n1"></label>
+          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="i_c1"></label>
+          <label>Estanque 2 · Nivel<input type="number" step="any" inputmode="decimal" id="i_n2"></label>
+          <label>Estanque 2 · C%<input type="number" step="any" inputmode="decimal" id="i_c2"></label>
+          <label class="full">Estanque CCA · kg (balanza)<input type="number" step="any" inputmode="decimal" id="i_cca"></label>
         </div>
+        <div class="g2 manual-only">
+          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="i_mn1"></label>
+          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="i_mc1"></label>
+          <label>CCA · Altura<input type="number" step="any" inputmode="decimal" id="i_alt"></label>
+          <label>CCA · Densidad<input type="number" step="any" inputmode="decimal" id="i_dens"></label>
+        </div>
+        <div class="calc" id="i_calc"></div>
       </div>
-    </fieldset>
 
-    <div class="calc" id="calc"></div>
-
-    <label>Observaciones
-      <textarea id="fObs" rows="2" maxlength="300"></textarea>
-    </label>
+      <!-- Término de turno -->
+      <div class="col" id="col-t">
+        <div class="col-head">
+          <strong>Término de turno</strong>
+          <span class="chip ter">Término</span>
+        </div>
+        <div class="state" id="t_state"></div>
+        <div class="g2 auto-only">
+          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="t_n1"></label>
+          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="t_c1"></label>
+          <label>Estanque 2 · Nivel<input type="number" step="any" inputmode="decimal" id="t_n2"></label>
+          <label>Estanque 2 · C%<input type="number" step="any" inputmode="decimal" id="t_c2"></label>
+          <label class="full">Estanque CCA · kg (balanza)<input type="number" step="any" inputmode="decimal" id="t_cca"></label>
+        </div>
+        <div class="g2 manual-only">
+          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="t_mn1"></label>
+          <label>Estanque 1 · C%<input type="number" step="any" inputmode="decimal" id="t_mc1"></label>
+          <label>CCA · Altura<input type="number" step="any" inputmode="decimal" id="t_alt"></label>
+          <label>CCA · Densidad<input type="number" step="any" inputmode="decimal" id="t_dens"></label>
+        </div>
+        <div class="calc" id="t_calc"></div>
+      </div>
+    </div>
 
     <div class="actions">
       <button type="button" class="btn" id="fCancel">Cancelar</button>
@@ -169,7 +185,7 @@ legend{font-size:.85rem;font-weight:700;padding:0 6px}
 
 <script>
 /* =========================================================
-   CONFIGURACIÓN: pega aquí la URL del Apps Script y el token
+   CONFIGURACIÓN
    ========================================================= */
 const CONFIG = {
   SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwMrfld9mSD3PMcIxv57Z4MWXmwZE2nYGA55T1ewUEkinTj5kjOVoSCPdad4xjbBWk/exec',
@@ -181,6 +197,12 @@ const IMP = {
   auto2:  { label: 'Automático 2',      tipo: 'auto'   },
   manual: { label: 'Manual (Amarillo)', tipo: 'manual' }
 };
+const TURNOS = [
+  { key: 'Inicio',  pre: 'i' },
+  { key: 'Término', pre: 't' }
+];
+const FIELDS_AUTO   = ['n1','c1','n2','c2','cca'];
+const FIELDS_MANUAL = ['n1','c1','alt','dens'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
@@ -231,33 +253,51 @@ function calcRec(tipo, d) {
   };
 }
 
-function readForm() {
-  const v = id => { const x = $(id).value; return x === '' ? null : Number(x); };
-  return {
-    n1: v('n1'), c1: v('c1'), n2: v('n2'), c2: v('c2'),
-    ccaBalanza: v('cca'), altura: v('alt'), dens: v('dens')
-  };
+/* Lee un turno del formulario. pre = 'i' (inicio) o 't' (término) */
+function readCol(pre, tipo) {
+  const v = id => { const x = $(pre + '_' + id).value; return x === '' ? null : Number(x); };
+  if (tipo === 'auto') {
+    return { n1: v('n1'), c1: v('c1'), n2: v('n2'), c2: v('c2'), ccaBalanza: v('cca'), altura: null, dens: null };
+  }
+  return { n1: v('mn1'), c1: v('mc1'), n2: null, c2: null, ccaBalanza: null, altura: v('alt'), dens: v('dens') };
+}
+
+function touched(pre, tipo) {
+  const ids = (tipo === 'auto' ? FIELDS_AUTO : FIELDS_MANUAL).map(f => {
+    if (tipo === 'manual') return pre + '_' + (f === 'n1' ? 'mn1' : f === 'c1' ? 'mc1' : f);
+    return pre + '_' + f;
+  });
+  return ids.some(id => $(id).value !== '');
+}
+
+function complete(tipo, d) {
+  const req = tipo === 'auto'
+    ? [d.n1, d.c1, d.n2, d.c2, d.ccaBalanza]
+    : [d.n1, d.c1, d.altura, d.dens];
+  return req.every(x => x != null && !Number.isNaN(x));
+}
+
+function calcHtml(tipo, c) {
+  const f = x => x == null ? '—' : fmt1(x);
+  let rows = `<tr><td>Est. 1 · kg activos</td><td>${f(c.act1)}</td></tr>
+              <tr><td>Est. 1 · KG CCA 60%</td><td>${f(c.k1)}</td></tr>`;
+  if (tipo === 'auto') {
+    rows += `<tr><td>Est. 2 · kg activos</td><td>${f(c.act2)}</td></tr>
+             <tr><td>Est. 2 · KG CCA 60%</td><td>${f(c.k2)}</td></tr>
+             <tr><td>CCA · kg (balanza)</td><td>${f(c.cca)}</td></tr>`;
+  } else {
+    rows += `<tr><td>CCA · altura × densidad</td><td>${f(c.cca)}</td></tr>`;
+  }
+  rows += `<tr class="tot"><td>KG CCA 60% TOTAL</td><td>${f(c.total)}</td></tr>`;
+  return `<table>${rows}</table>`;
 }
 
 function updateCalc() {
   const tipo = IMP[imp].tipo;
-  const d = readForm();
-  const c = calcRec(tipo, d);
-  const f = x => x == null ? '—' : fmt1(x);
-  let rows = `
-    <tr><td>Estanque 1 · kg activos</td><td>${f(c.act1)}</td></tr>
-    <tr><td>Estanque 1 · KG CCA 60%</td><td>${f(c.k1)}</td></tr>`;
-  if (tipo === 'auto') {
-    rows += `
-    <tr><td>Estanque 2 · kg activos</td><td>${f(c.act2)}</td></tr>
-    <tr><td>Estanque 2 · KG CCA 60%</td><td>${f(c.k2)}</td></tr>
-    <tr><td>CCA · kg (balanza)</td><td>${f(c.cca)}</td></tr>`;
-  } else {
-    rows += `
-    <tr><td>CCA · altura × densidad</td><td>${f(c.cca)}</td></tr>`;
+  for (const t of TURNOS) {
+    const d = readCol(t.pre, tipo);
+    $(t.pre + '_calc').innerHTML = calcHtml(tipo, calcRec(tipo, d));
   }
-  rows += `<tr class="tot"><td>KG CCA 60% TOTAL</td><td>${f(c.total)}</td></tr>`;
-  $('calc').innerHTML = `<table>${rows}</table>`;
 }
 
 /* ---------- Comunicación con Google Sheets (Apps Script) ---------- */
@@ -270,7 +310,7 @@ function checkConfig() {
 async function parseJson(res) {
   const text = await res.text();
   try { return JSON.parse(text); }
-  catch (e) { throw new Error('Respuesta no válida. Revisa que el Apps Script esté publicado con acceso "Cualquier persona".'); }
+  catch (e) { throw new Error('Respuesta no válida. Revisa que el Apps Script esté publicado con acceso "Cualquier usuario".'); }
 }
 
 async function loadAll() {
@@ -315,8 +355,8 @@ function render() {
     const cls = 'day' + (ds === today ? ' today' : '') + (wd === 0 || wd === 6 ? ' weekend' : '');
     html += `<button type="button" class="${cls}" data-date="${ds}">
       <span class="dnum">${d}</span>
-      ${ini ? `<span class="val ini">Ini ${ini.total != null ? fmt0(ini.total) : '—'}</span>` : ''}
-      ${ter ? `<span class="val ter">Ter ${ter.total != null ? fmt0(ter.total) : '—'}</span>` : ''}
+      ${ini ? `<span class="chip ini">Inicio ${ini.total != null ? fmt0(ini.total) : '—'}</span>` : ''}
+      ${ter ? `<span class="chip ter">Término ${ter.total != null ? fmt0(ter.total) : '—'}</span>` : ''}
       ${!ini && !ter ? '<span class="miss">sin registro</span>' : ''}
     </button>`;
   }
@@ -328,49 +368,52 @@ function openForm(ds) {
   editingDate = ds;
   const [y, m, d] = ds.split('-').map(Number);
   $('fTitle').textContent = `${IMP[imp].label} · ${d} de ${MESES[m - 1]} de ${y}`;
-  $('fSub').textContent = 'KG CCA 60% · Ingreso de datos del laboratorio';
-  $('fTurno').value = 'Inicio';
+  $('fSub').textContent = 'KG CCA 60% · Ingresa el inicio y el término del turno. Puedes llenar uno solo.';
   loadFormFor();
-  $('fMsg').textContent = '';
+  showMsg('', false);
   $('modal').classList.add('open');
 }
 
+function setVal(id, val) { $(id).value = (val == null) ? '' : val; }
+
 function loadFormFor() {
-  const turno = $('fTurno').value;
-  const rec = byKey.get(`${editingDate}|${IMP[imp].label}|${turno}`);
   const tipo = IMP[imp].tipo;
-  $('blkAuto').classList.toggle('hidden', tipo !== 'auto');
-  $('blkManual').classList.toggle('hidden', tipo !== 'manual');
-  const set = (id, val) => { $(id).value = (val == null) ? '' : val; };
-  set('n1', rec?.n1); set('c1', rec?.c1);
-  set('n2', rec?.n2); set('c2', rec?.c2);
-  set('cca', rec?.ccaBalanza); set('alt', rec?.altura); set('dens', rec?.dens);
-  $('fObs').value = rec?.obs || '';
-  $('fResp').value = rec?.responsable || localStorage.getItem('ultimoResp') || '';
-  $('fNote').textContent = rec
-    ? `Ya existe un registro de ${turno.toLowerCase()} de turno. Al guardar se reemplaza.`
-    : `Sin registro de ${turno.toLowerCase()} de turno para este día.`;
+  const autoBlocks = document.querySelectorAll('.auto-only');
+  const manualBlocks = document.querySelectorAll('.manual-only');
+  autoBlocks.forEach(el => el.classList.toggle('hidden', tipo !== 'auto'));
+  manualBlocks.forEach(el => el.classList.toggle('hidden', tipo !== 'manual'));
+
+  for (const t of TURNOS) {
+    const rec = byKey.get(`${editingDate}|${IMP[imp].label}|${t.key}`);
+    if (tipo === 'auto') {
+      setVal(t.pre + '_n1', rec?.n1); setVal(t.pre + '_c1', rec?.c1);
+      setVal(t.pre + '_n2', rec?.n2); setVal(t.pre + '_c2', rec?.c2);
+      setVal(t.pre + '_cca', rec?.ccaBalanza);
+    } else {
+      setVal(t.pre + '_mn1', rec?.n1); setVal(t.pre + '_mc1', rec?.c1);
+      setVal(t.pre + '_alt', rec?.altura); setVal(t.pre + '_dens', rec?.dens);
+    }
+    $(t.pre + '_state').textContent = rec
+      ? 'Ya registrado: al guardar se reemplaza.'
+      : 'Sin registro todavía.';
+  }
+  // Responsable y observaciones: del último registro del día si existe
+  const any = byKey.get(`${editingDate}|${IMP[imp].label}|Inicio`) || byKey.get(`${editingDate}|${IMP[imp].label}|Término`);
+  $('fResp').value = any?.responsable || localStorage.getItem('ultimoResp') || '';
+  $('fObs').value = any?.obs || '';
   updateCalc();
 }
 
 function closeForm() { $('modal').classList.remove('open'); }
 
-async function onSave(e) {
-  e.preventDefault();
-  const tipo = IMP[imp].tipo;
-  const turno = $('fTurno').value;
-  const d = readForm();
-  const required = tipo === 'auto'
-    ? [d.n1, d.c1, d.n2, d.c2, d.ccaBalanza]
-    : [d.n1, d.c1, d.altura, d.dens];
-  if (required.some(x => x == null || Number.isNaN(x))) {
-    $('fMsg').className = 'status err';
-    $('fMsg').textContent = 'Completa todos los campos antes de guardar.';
-    return;
-  }
+function showMsg(msg, err) {
+  $('fMsg').className = 'status' + (err ? ' err' : '');
+  $('fMsg').textContent = msg;
+}
+
+function buildRec(turno, d, tipo, resp, obs) {
   const c = calcRec(tipo, d);
-  const resp = $('fResp').value.trim();
-  const rec = {
+  return {
     fecha: editingDate,
     impLabel: IMP[imp].label,
     turno,
@@ -384,22 +427,42 @@ async function onSave(e) {
     cca: c.cca,
     total: c.total,
     responsable: resp,
-    obs: $('fObs').value.trim()
+    obs
   };
+}
+
+async function onSave(e) {
+  e.preventDefault();
+  const tipo = IMP[imp].tipo;
+  const resp = $('fResp').value.trim();
+  const obs = $('fObs').value.trim();
+
+  const toSave = [];
+  const errores = [];
+  for (const t of TURNOS) {
+    if (!touched(t.pre, tipo)) continue;
+    const d = readCol(t.pre, tipo);
+    if (!complete(tipo, d)) {
+      errores.push(`Completa todos los campos de ${t.key.toLowerCase()} de turno o déjalo vacío.`);
+      continue;
+    }
+    toSave.push({ turno: t.key, rec: buildRec(t.key, d, tipo, resp, obs) });
+  }
+  if (errores.length) { showMsg(errores.join(' '), true); return; }
+  if (!toSave.length) { showMsg('Ingresa al menos un turno (inicio o término).', true); return; }
+
   const btn = $('fSave');
   btn.disabled = true;
-  $('fMsg').className = 'status';
-  $('fMsg').textContent = 'Guardando…';
+  showMsg('Guardando…', false);
   try {
-    await saveRecord(rec);
+    for (const s of toSave) await saveRecord(s.rec);
     try { if (resp) localStorage.setItem('ultimoResp', resp); } catch (_) {}
     await loadAll();
     render();
     closeForm();
-    setStatus(`Guardado: ${IMP[imp].label} · ${turno} · ${editingDate}`);
+    setStatus(`Guardado: ${IMP[imp].label} · ${editingDate} · ${toSave.map(s => s.turno.toLowerCase()).join(' y ')}`);
   } catch (err) {
-    $('fMsg').className = 'status err';
-    $('fMsg').textContent = err.message;
+    showMsg(err.message, true);
   } finally {
     btn.disabled = false;
   }
@@ -443,8 +506,9 @@ $('cal').addEventListener('click', e => {
   const b = e.target.closest('button[data-date]');
   if (b) openForm(b.dataset.date);
 });
-$('fTurno').onchange = loadFormFor;
-['n1','c1','n2','c2','cca','alt','dens'].forEach(id => $(id).addEventListener('input', updateCalc));
+TURNOS.forEach(t => {
+  ['n1','c1','n2','c2','cca','mn1','mc1','alt','dens'].forEach(f => $(t.pre + '_' + f).addEventListener('input', updateCalc));
+});
 $('fCancel').onclick = closeForm;
 $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeForm(); });
 $('form').addEventListener('submit', onSave);
