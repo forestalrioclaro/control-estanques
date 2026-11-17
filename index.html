@@ -124,7 +124,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
     <input type="file" id="cargaFile" accept=".xlsx,.xls" style="display:none">
     <span class="status" id="cargaUpInfo">Sube el informe una sola vez: carga Automático 1 y Automático 2.</span>
   </div>
-  <div class="seg" id="viewSel" style="margin-bottom:12px"><button type="button" data-view="cal" class="on">Calendario</button><button type="button" data-view="trend">Tendencia</button><button type="button" data-view="car1">Cargas · Auto 1</button><button type="button" data-view="car2">Cargas · Auto 2</button><button type="button" data-view="carm">Cargas · Manual</button></div>
+  <div class="seg" id="viewSel" style="margin-bottom:12px"><button type="button" data-view="cal" class="on">Calendario</button><button type="button" data-view="trend">Tendencia</button><button type="button" data-view="car1">Resumen imp 01</button><button type="button" data-view="car2">Resumen imp 02</button><button type="button" data-view="carm">Resumen imp 03</button></div>
   <div class="bar">
     <div class="seg" id="impSel">
       <button type="button" data-imp="auto1" class="on">Automático 1</button>
@@ -868,13 +868,13 @@ function renderCargas() {
     $('cargaDetail').innerHTML = '';
     return;
   }
-  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, cca: a.cca + d.cca, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, cca: 0, inv: 0 });
-  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">CCA 60% usado (inicial − final)</th><th class="num">CCA 60% (solución × volumen)</th></tr></thead><tbody>';
+  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, kg6: a.kg6 + d.kg / 0.6, cca: a.cca + d.cca, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, kg6: 0, cca: 0, inv: 0 });
+  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Diferencia por estanques</th><th class="num">Total CCA por carga</th><th class="num">Total por volumen</th></tr></thead><tbody>';
   for (const d of dias) {
     const invTxt = d.inv == null ? '—' : fmt1(d.inv);
-    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.cca)}</td></tr>`;
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.kg / 0.6)}</td><td class="num">${fmt1(d.cca)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.kg6)}</td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
 }
