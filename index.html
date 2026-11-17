@@ -89,7 +89,13 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 .tline{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
 .tgrid{stroke:#e5e8ec;stroke-width:1}
 .taxis{font-size:11px;fill:var(--muted);font-family:Lato,system-ui,sans-serif}
-#trendBox{overflow-x:auto}
+#trendBox{overflow-x:auto;position:relative}
+.ttip{position:absolute;display:none;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.14);padding:8px 10px;font-size:.85rem;pointer-events:none;z-index:5;min-width:210px;white-space:nowrap}
+.ttitle{font-weight:700;margin-bottom:4px;font-family:Raleway,Lato,system-ui,sans-serif;text-transform:capitalize}
+.trow{display:flex;align-items:center;gap:6px;margin:3px 0}
+.tname{flex:1;color:var(--ink)}
+.tval{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+.tguide{stroke:#9aa1a9;stroke-width:1;stroke-dasharray:3 3;pointer-events:none}
 #trendBox svg{width:100%;height:auto;display:block;min-width:600px}
 .swatch{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
 #trendLegend{font-size:.85rem;color:var(--muted);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
@@ -491,6 +497,46 @@ const TREND_COLORS = { auto1: '#00B255', auto2: '#5f6268', manual: '#2659a5' };
 const TREND_DASH   = { auto1: '', auto2: '7 4', manual: '' };
 let trendTurno = 'Término';
 let view = 'cal';
+let trendState = null;
+
+/* Tooltip: al pasar el mouse por un día, muestra las 3 impregnadoras con su valor */
+function showTrendTip(clientX, clientY) {
+  const svg = $('trendBox').querySelector('svg');
+  const tip = $('trendTip');
+  if (!svg || !tip || !trendState) return;
+  const rect = svg.getBoundingClientRect();
+  const sx = (clientX - rect.left) * trendState.W / rect.width;
+  const { PL, iw, days, m, X, series } = trendState;
+  const d = days > 1 ? Math.round((sx - PL) / iw * (days - 1)) + 1 : 1;
+  if (d < 1 || d > days) { hideTrendTip(); return; }
+  const guide = $('trendGuide');
+  guide.setAttribute('x1', X(d).toFixed(1));
+  guide.setAttribute('x2', X(d).toFixed(1));
+  guide.style.display = '';
+  const rows = series.map(s => {
+    const v = s.vals[d - 1];
+    return `<div class="trow"><span class="swatch" style="background:${TREND_COLORS[s.k]}"></span><span class="tname">${IMP[s.k].label}</span><span class="tval">${v == null ? 'sin registro' : fmt0(v) + ' kg'}</span></div>`;
+  }).join('');
+  tip.innerHTML = `<div class="ttitle">${d} de ${MESES[m]} · ${trendTurno.toLowerCase()}</div>${rows}`;
+  tip.style.display = 'block';
+  const box = $('trendBox');
+  const br = box.getBoundingClientRect();
+  const px = clientX - br.left + box.scrollLeft;
+  const py = clientY - br.top + box.scrollTop;
+  const tw = tip.offsetWidth;
+  let left = px + 16;
+  if (left + tw > box.scrollWidth) left = px - tw - 16;
+  if (left < 0) left = 0;
+  tip.style.left = left + 'px';
+  tip.style.top = (py + 14) + 'px';
+}
+
+function hideTrendTip() {
+  const tip = $('trendTip');
+  const guide = $('trendGuide');
+  if (tip) tip.style.display = 'none';
+  if (guide) guide.style.display = 'none';
+}
 
 function niceMax(v) {
   const raw = v * 1.08;
@@ -531,6 +577,7 @@ function renderTrend() {
     g += `<text class="taxis" x="${X(d).toFixed(1)}" y="${H - PB + 18}" text-anchor="middle">${d}</text>`;
   }
   g += `<text class="taxis" x="${PL}" y="${PT - 8}">KG CCA 60% · ${trendTurno.toLowerCase()} de turno</text>`;
+  trendState = { W, PL, PT, ih, iw, days, m, X, series };
   let lines = '';
   for (const s of series) {
     const color = TREND_COLORS[s.k];
@@ -547,7 +594,12 @@ function renderTrend() {
       lines += `<circle cx="${X(i + 1).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3.5" fill="#fff" stroke="${color}" stroke-width="2"><title>${IMP[s.k].label} · ${i + 1}/${m + 1}: ${fmt0(v)} kg</title></circle>`;
     });
   }
-  $('trendBox').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de KG CCA 60% por impregnadora">${g}${lines}</svg>`;
+  const guide = `<line id="trendGuide" class="tguide" x1="0" x2="0" y1="${PT}" y2="${PT + ih}" style="display:none"/>`;
+  $('trendBox').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de KG CCA 60% por impregnadora">${g}${guide}${lines}</svg><div id="trendTip" class="ttip"></div>`;
+  const svgEl = $('trendBox').querySelector('svg');
+  svgEl.addEventListener('pointermove', e => showTrendTip(e.clientX, e.clientY));
+  svgEl.addEventListener('pointerdown', e => showTrendTip(e.clientX, e.clientY));
+  svgEl.addEventListener('pointerleave', hideTrendTip);
   $('trendLegend').innerHTML = keys.map(k => `<span><span class="swatch" style="background:${TREND_COLORS[k]}"></span>${IMP[k].label}</span>`).join('')
     + '<span>Los días sin registro quedan en blanco y la línea se corta.</span>';
 }
