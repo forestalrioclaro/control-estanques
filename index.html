@@ -175,6 +175,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
     </div>
     <div id="cargaBody"></div>
     <div id="cargaDetail" class="cdetail"></div>
+    <div id="recepBox" class="cdetail"></div>
   </section>
 
   <div class="foot">
@@ -863,6 +864,7 @@ function renderCargas() {
   if (v.planta == null) {
     $('cargaBody').innerHTML = '<p class="status">El informe de cargas trae solo las plantas 1 y 2 (Automático 1 y 2). Manual no tiene cargas en este informe.</p>';
     $('cargaDetail').innerHTML = '';
+    $('recepBox').innerHTML = '';
     return;
   }
   const lines = cargas.filter(c => c.planta === v.planta);
@@ -895,7 +897,48 @@ function renderCargas() {
   html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.rec)}</td><td class="num">${fmt1(tot.cons)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
+  renderRecepBox(v.planta);
 }
+
+/* Mantenedor: fecha de cada recepción de preservantes (editable a mano) */
+function renderRecepBox(planta) {
+  const box = $('recepBox');
+  const rows = recepciones.filter(r => r.planta === planta).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (!rows.length) { box.innerHTML = ''; return; }
+  let html = '<h3>Recepciones de preservantes · fecha de descarga</h3>';
+  html += '<table class="ctab"><thead><tr><th>Factura</th><th class="num">Kg recibidos</th><th>Fecha</th><th></th></tr></thead><tbody>';
+  for (const r of rows) {
+    html += `<tr><td>${r.factura}</td><td class="num">${fmt1(r.kg)}</td><td><input type="date" value="${r.fecha}" data-fecha-input="${r.clave}"></td><td><button class="btn" data-recep-save="${r.clave}">Guardar fecha</button></td></tr>`;
+  }
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+$('recepBox').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-recep-save]');
+  if (!btn) return;
+  const clave = btn.dataset.recepSave;
+  const input = document.querySelector(`[data-fecha-input="${clave}"]`);
+  const fecha = input ? input.value : '';
+  if (!fecha) { setStatus('Ingresa una fecha', true); return; }
+  busy('Guardando fecha…');
+  try {
+    const res = await fetch(CONFIG.SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: CONFIG.TOKEN, action: 'recepcionFecha', clave, fecha })
+    });
+    const j = await parseJson(res);
+    if (!j.ok) throw new Error(j.error || 'No se pudo guardar');
+    await loadCargas();
+    renderCargas();
+    setStatus('Fecha de recepción actualizada');
+  } catch (err) {
+    setStatus('No se pudo actualizar la fecha: ' + err.message, true);
+  } finally {
+    idle();
+  }
+});
 
 function renderCargaDetail(planta) {
   if (!cargaDay) {
@@ -962,7 +1005,7 @@ $('recepFile').addEventListener('change', async e => {
       const fecha = String(tsOf(r['Fecha Recepción']) || '').slice(0, 10);
       if (!fecha || fecha < CARGAS_FROM) continue;
       const factura = String(r['Numero Factura'] || '').trim();
-      recs.push({ clave: [fecha, planta, factura].join('|'), fecha, impLabel: imp, planta, factura, kg: Number(r['Kilos']) || 0 });
+      recs.push({ clave: [planta, factura].join('|'), fecha, impLabel: imp, planta, factura, kg: Number(r['Kilos']) || 0 });
     }
     if (!recs.length) { setStatus('El informe no tiene recepciones de Automático 1 o 2 desde ' + CARGAS_FROM, true); return; }
     let nuevas = 0, existentes = 0;
