@@ -106,6 +106,9 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 .ctab th{font-size:.8rem;color:var(--muted);font-weight:700}
 .ctab .num{text-align:right;font-variant-numeric:tabular-nums}
 .ctab tfoot td{font-weight:700;border-top:2px solid var(--accent);border-bottom:0}
+.ctab td .c{display:inline;margin-left:6px;font-size:.7rem;color:#9a9ea4;font-weight:400;white-space:nowrap}
+.ctab td.amb{background:#fdf6e3}
+.ctab td.red{background:#fbeeee}
 .crow{cursor:pointer}
 .crow:hover{background:#f3fbf6}
 .crow.sel{background:#e0f6ea}
@@ -841,6 +844,17 @@ function ccaDeCargas(lines) {
   return total;
 }
 
+/* Valor + diferencia contra "Total CCA por carga" (texto pequeño en la misma línea). Color sutil: <2 % sin color, 2–5 % ámbar, >5 % rosado */
+function cmpCell(val, ref) {
+  const d = val - ref;
+  const p = ref ? d / ref * 100 : 0;
+  const a = Math.abs(p);
+  const cls = a < 2 ? '' : a < 5 ? ' amb' : ' red';
+  const sg = d > 0 ? '+' : '';
+  const pTxt = (p > 0 ? '+' : '') + fmt1(p) + '%';
+  return `<td class="num${cls}">${fmt1(val)} kg<span class="c">${sg}${fmt1(d)} kg · ${pTxt}</span></td>`;
+}
+
 /* Total por retención = M3 × Retención Real ÷ 0,6, por línea (suma de las líneas del día) */
 function ccaDeRetencion(lines) {
   return lines.reduce((t, c) => t + c.m3 * (c.ret || 0) / 0.6, 0);
@@ -918,9 +932,9 @@ function renderCargas() {
   let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">Total CCA por carga</th><th class="num">Diferencia por estanques</th><th class="num">Recepción CCA 60%</th><th class="num">Consumo CCA 60%</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
   for (const d of dias) {
     const invTxt = d.inv == null ? '—' : fmt1(d.inv);
-    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.rec)}</td><td class="num">${d.cons == null ? '—' : fmt1(d.cons)}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${fmt1(d.ret)}</td></tr>`;
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.rec)}</td>${d.cons == null ? '<td class="num">—</td>' : cmpCell(d.cons, d.kg)}${cmpCell(d.cca, d.kg)}<td class="num">${fmt1(d.ret)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.rec)}</td><td class="num">${fmt1(tot.cons)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.rec)}</td>${cmpCell(tot.cons, tot.kg)}${cmpCell(tot.cca, tot.kg)}<td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
   renderRecepBox(v.planta);
