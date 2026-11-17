@@ -811,6 +811,11 @@ function ccaDeCargas(lines) {
   return total;
 }
 
+/* Total por retención = M3 × Retención Real ÷ 0,6, por línea (suma de las líneas del día) */
+function ccaDeRetencion(lines) {
+  return lines.reduce((t, c) => t + c.m3 * (c.ret || 0) / 0.6, 0);
+}
+
 /* Diferencia de inventario del día: KG CCA 60% Inicio − Término (desde los registros de la app) */
 function difInvDia(fecha) {
   const v = CARGA_VIEWS[view];
@@ -861,20 +866,20 @@ function renderCargas() {
     g.kg += c.kgAj;
     g.lines.push(c);
   }
-  const dias = [...byDay.values()].map(d => ({ fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines), inv: difInvDia(d.fecha) }))
+  const dias = [...byDay.values()].map(d => ({ fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines), ret: ccaDeRetencion(d.lines), inv: difInvDia(d.fecha) }))
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
   if (!dias.length) {
     $('cargaBody').innerHTML = '<p class="status">Sin cargas registradas para este mes. Sube el informe para cargarlas.</p>';
     $('cargaDetail').innerHTML = '';
     return;
   }
-  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, kg6: a.kg6 + d.kg / 0.6, cca: a.cca + d.cca, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, kg6: 0, cca: 0, inv: 0 });
-  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Diferencia por estanques</th><th class="num">Total CCA por carga</th><th class="num">Total por volumen</th></tr></thead><tbody>';
+  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, kg6: a.kg6 + d.kg / 0.6, cca: a.cca + d.cca, ret: a.ret + d.ret, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, kg6: 0, cca: 0, ret: 0, inv: 0 });
+  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Diferencia por estanques</th><th class="num">Total CCA por carga</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
   for (const d of dias) {
     const invTxt = d.inv == null ? '—' : fmt1(d.inv);
-    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.kg / 0.6)}</td><td class="num">${fmt1(d.cca)}</td></tr>`;
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.kg / 0.6)}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${fmt1(d.ret)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.kg6)}</td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.kg6)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
 }
@@ -888,21 +893,22 @@ function renderCargaDetail(planta) {
   const byC = new Map();
   for (const c of dayLines) {
     const k = String(c.nCarga);
-    if (!byC.has(k)) byC.set(k, { n: c.nCarga, lineas: 0, m3: 0, kg: 0, sol: c.sol || 0, vol: c.vol || 0 });
+    if (!byC.has(k)) byC.set(k, { n: c.nCarga, lineas: 0, m3: 0, kg: 0, ret: 0, sol: c.sol || 0, vol: c.vol || 0 });
     const g = byC.get(k);
     g.lineas++;
     g.m3 += c.m3;
     g.kg += c.kgAj;
+    g.ret += c.m3 * (c.ret || 0) / 0.6;
   }
   const list = [...byC.values()].map(g => ({ ...g, cca: (g.sol / 100) * g.vol / 0.6 }))
     .sort((a, b) => Number(a.n) - Number(b.n));
-  const tot = list.reduce((a, g) => ({ lineas: a.lineas + g.lineas, m3: a.m3 + g.m3, kg: a.kg + g.kg, cca: a.cca + g.cca }), { lineas: 0, m3: 0, kg: 0, cca: 0 });
+  const tot = list.reduce((a, g) => ({ lineas: a.lineas + g.lineas, m3: a.m3 + g.m3, kg: a.kg + g.kg, cca: a.cca + g.cca, ret: a.ret + g.ret }), { lineas: 0, m3: 0, kg: 0, cca: 0, ret: 0 });
   let html = `<h3>N° de carga · ${fechaCorta(cargaDay)} · ${CARGA_VIEWS[view].label}</h3>`;
-  html += '<table class="ctab"><thead><tr><th>N° carga</th><th class="num">Líneas</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Solución %</th><th class="num">Volumen</th><th class="num">KG CCA 60%</th></tr></thead><tbody>';
+  html += '<table class="ctab"><thead><tr><th>N° carga</th><th class="num">Líneas</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">Solución %</th><th class="num">Volumen</th><th class="num">KG CCA 60%</th><th class="num">Total por retención</th></tr></thead><tbody>';
   for (const g of list) {
-    html += `<tr><td>${g.n}</td><td class="num">${g.lineas}</td><td class="num">${fmt2(g.m3)}</td><td class="num">${fmt1(g.kg)}</td><td class="num">${String(g.sol).replace('.', ',')}</td><td class="num">${fmt0(g.vol)}</td><td class="num">${fmt1(g.cca)}</td></tr>`;
+    html += `<tr><td>${g.n}</td><td class="num">${g.lineas}</td><td class="num">${fmt2(g.m3)}</td><td class="num">${fmt1(g.kg)}</td><td class="num">${String(g.sol).replace('.', ',')}</td><td class="num">${fmt0(g.vol)}</td><td class="num">${fmt1(g.cca)}</td><td class="num">${fmt1(g.ret)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total del día</td><td class="num">${tot.lineas}</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td></td><td></td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total del día</td><td class="num">${tot.lineas}</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td></td><td></td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
   $('cargaDetail').innerHTML = html;
 }
 
@@ -948,7 +954,8 @@ $('cargaFile').addEventListener('change', async e => {
         clave, fecha, hora: ts.slice(11, 19), planta,
         nCarga: r['N° Carga'], producto,
         cantidad: Number(r['Cantidad']), m3: Number(r['M3']) || 0, kgAj: Number(r['Total KG Ajustados']) || 0,
-        sol: Number(r['Solución']) || 0, vol: Number(r['Volumen Utilizado']) || 0
+        sol: Number(r['Solución']) || 0, vol: Number(r['Volumen Utilizado']) || 0,
+        ret: Number(r['Retención Real']) || 0
       });
     }
     if (!recs.length) { setStatus('El informe no tiene cargas desde ' + CARGAS_FROM, true); return; }
