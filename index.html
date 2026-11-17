@@ -42,6 +42,7 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .chip{display:block;font-size:.72rem;font-weight:600;padding:2px 6px;border-radius:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .chip.ini{background:var(--plomo-bg);color:var(--plomo-ink)}
 .chip.ter{background:var(--verde-bg);color:var(--verde-ink)}
+.chip.dif{background:#e8eef8;color:#2659a5}
 .miss{font-size:.7rem;color:#9aa4b0}
 .legend{font-size:.8rem;color:var(--muted);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 .legend .chip{display:inline-block}
@@ -512,6 +513,7 @@ function render() {
       <span class="dnum">${d}</span>
       ${ini ? `<span class="chip ini">Inicio ${ini.total != null ? fmt0(ini.total) : '—'}</span>` : ''}
       ${ter ? `<span class="chip ter">Término ${ter.total != null ? fmt0(ter.total) : '—'}</span>` : ''}
+      ${ini && ter && ini.total != null && ter.total != null ? `<span class="chip dif">Dif ${fmt0(Number(ini.total) - Number(ter.total))}</span>` : ''}
       ${!ini && !ter ? '<span class="miss">sin registro</span>' : ''}
     </button>`;
   }
@@ -859,20 +861,20 @@ function renderCargas() {
     g.kg += c.kgAj;
     g.lines.push(c);
   }
-  const dias = [...byDay.values()].map(d => ({ fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines), dif: difInvDia(d.fecha) }))
+  const dias = [...byDay.values()].map(d => ({ fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines), inv: difInvDia(d.fecha) }))
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
   if (!dias.length) {
     $('cargaBody').innerHTML = '<p class="status">Sin cargas registradas para este mes. Sube el informe para cargarlas.</p>';
     $('cargaDetail').innerHTML = '';
     return;
   }
-  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, cca: a.cca + d.cca, dif: a.dif + (d.dif ?? 0) }), { m3: 0, kg: 0, cca: 0, dif: 0 });
-  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">KG CCA 60%</th><th class="num">Dif. Inicio − Término</th></tr></thead><tbody>';
+  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, cca: a.cca + d.cca, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, cca: 0, inv: 0 });
+  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">KG ajustados</th><th class="num">CCA 60% usado (inicial − final)</th><th class="num">CCA 60% (solución × volumen)</th></tr></thead><tbody>';
   for (const d of dias) {
-    const difTxt = d.dif == null ? '—' : fmt1(d.dif);
-    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${difTxt}</td></tr>`;
+    const invTxt = d.inv == null ? '—' : fmt1(d.inv);
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.cca)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.dif)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.cca)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
 }
