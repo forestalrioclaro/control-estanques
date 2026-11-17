@@ -123,6 +123,9 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
     <label class="btn primary" for="cargaFile" style="cursor:pointer">⬆ Subir informe de cargas (.xlsx)</label>
     <input type="file" id="cargaFile" accept=".xlsx,.xls" style="display:none">
     <span class="status" id="cargaUpInfo">Sube el informe una sola vez: carga Automático 1 y Automático 2.</span>
+    <label class="btn primary" for="recepFile" style="cursor:pointer">⬆ Subir informe de preservantes (.xlsx)</label>
+    <input type="file" id="recepFile" accept=".xlsx,.xls" style="display:none">
+    <span class="status" id="recepUpInfo">Recepciones de Automático Norte (1) y Sur (2).</span>
   </div>
   <div class="seg" id="viewSel" style="margin-bottom:12px"><button type="button" data-view="cal" class="on">Calendario</button><button type="button" data-view="trend">Tendencia</button><button type="button" data-view="car1">Resumen imp 01</button><button type="button" data-view="car2">Resumen imp 02</button><button type="button" data-view="carm">Resumen imp 03</button></div>
   <div class="bar">
@@ -795,6 +798,7 @@ const CARGA_VIEWS = {
   carm: { planta: null, label: 'Manual' }
 };
 let cargas = [];
+let recepciones = [];
 let cargaDay = null;
 const fmt2 = n => Number(n).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fechaCorta = d => `${DOW[(new Date(d + 'T12:00:00').getDay() + 6) % 7]} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
@@ -833,6 +837,10 @@ async function loadCargas() {
   const j = await parseJson(await fetch(url, { cache: 'no-store' }));
   if (!j.ok) throw new Error(j.error || 'Error al leer cargas');
   cargas = j.cargas;
+  const urlR = `${CONFIG.SCRIPT_URL}?action=recepciones&month=${ym}&token=${encodeURIComponent(CONFIG.TOKEN)}`;
+  const jr = await parseJson(await fetch(urlR, { cache: 'no-store' }));
+  if (!jr.ok) throw new Error(jr.error || 'Error al leer recepciones');
+  recepciones = jr.recepciones;
 }
 
 async function refreshCargasView(msg) {
@@ -866,20 +874,25 @@ function renderCargas() {
     g.kg += c.kgAj;
     g.lines.push(c);
   }
-  const dias = [...byDay.values()].map(d => ({ fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines), ret: ccaDeRetencion(d.lines), inv: difInvDia(d.fecha) }))
+  const recDia = f => recepciones.filter(r => r.planta === v.planta && r.fecha === f).reduce((a, r) => a + r.kg, 0);
+  const dias = [...byDay.values()].map(d => {
+    const inv = difInvDia(d.fecha);
+    const rec = recDia(d.fecha);
+    return { fecha: d.fecha, m3: d.m3, kg: d.kg, cca: ccaDeCargas(d.lines), ret: ccaDeRetencion(d.lines), inv, rec, cons: inv == null ? null : inv + rec };
+  })
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
   if (!dias.length) {
     $('cargaBody').innerHTML = '<p class="status">Sin cargas registradas para este mes. Sube el informe para cargarlas.</p>';
     $('cargaDetail').innerHTML = '';
     return;
   }
-  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, kg6: a.kg6 + d.kg / 0.6, cca: a.cca + d.cca, ret: a.ret + d.ret, inv: a.inv + (d.inv ?? 0) }), { m3: 0, kg: 0, kg6: 0, cca: 0, ret: 0, inv: 0 });
-  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">Total CCA por carga</th><th class="num">Diferencia por estanques</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
+  const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, cca: a.cca + d.cca, ret: a.ret + d.ret, inv: a.inv + (d.inv ?? 0), rec: a.rec + d.rec, cons: a.cons + (d.cons ?? 0) }), { m3: 0, kg: 0, cca: 0, ret: 0, inv: 0, rec: 0, cons: 0 });
+  let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">Total CCA por carga</th><th class="num">Diferencia por estanques</th><th class="num">Recepción CCA 60%</th><th class="num">Consumo CCA 60%</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
   for (const d of dias) {
     const invTxt = d.inv == null ? '—' : fmt1(d.inv);
-    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${fmt1(d.ret)}</td></tr>`;
+    html += `<tr class="crow${cargaDay === d.fecha ? ' sel' : ''}" data-dia="${d.fecha}"><td>${fechaCorta(d.fecha)}</td><td class="num">${fmt2(d.m3)}</td><td class="num">${fmt1(d.kg)}</td><td class="num">${invTxt}</td><td class="num">${fmt1(d.rec)}</td><td class="num">${d.cons == null ? '—' : fmt1(d.cons)}</td><td class="num">${fmt1(d.cca)}</td><td class="num">${fmt1(d.ret)}</td></tr>`;
   }
-  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
+  html += `</tbody><tfoot><tr><td>Total mes</td><td class="num">${fmt2(tot.m3)}</td><td class="num">${fmt1(tot.kg)}</td><td class="num">${fmt1(tot.inv)}</td><td class="num">${fmt1(tot.rec)}</td><td class="num">${fmt1(tot.cons)}</td><td class="num">${fmt1(tot.cca)}</td><td class="num">${fmt1(tot.ret)}</td></tr></tfoot></table>`;
   $('cargaBody').innerHTML = html;
   renderCargaDetail(v.planta);
 }
@@ -931,6 +944,52 @@ $('cargaBody').addEventListener('click', e => {
   if (!tr) return;
   cargaDay = cargaDay === tr.dataset.dia ? null : tr.dataset.dia;
   renderCargas();
+});
+
+$('recepFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  busy('Leyendo preservantes…');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
+    const recs = [];
+    for (const r of rows) {
+      const imp = String(r['Impregnadora'] || '').trim();
+      const planta = imp === 'Automático Norte' ? 1 : imp === 'Automático Sur' ? 2 : null;
+      if (!planta) continue;
+      const fecha = String(tsOf(r['Fecha Recepción']) || '').slice(0, 10);
+      if (!fecha || fecha < CARGAS_FROM) continue;
+      const factura = String(r['Numero Factura'] || '').trim();
+      recs.push({ clave: [fecha, planta, factura].join('|'), fecha, impLabel: imp, planta, factura, kg: Number(r['Kilos']) || 0 });
+    }
+    if (!recs.length) { setStatus('El informe no tiene recepciones de Automático 1 o 2 desde ' + CARGAS_FROM, true); return; }
+    let nuevas = 0, existentes = 0;
+    const LOTE = 200;
+    for (let i = 0; i < recs.length; i += LOTE) {
+      busy(`Guardando recepciones ${Math.min(i + LOTE, recs.length)}/${recs.length}…`);
+      const res = await fetch(CONFIG.SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ token: CONFIG.TOKEN, action: 'recepcionesUpsert', records: recs.slice(i, i + LOTE) })
+      });
+      const j = await parseJson(res);
+      if (!j.ok) throw new Error(j.error || 'No se pudo guardar');
+      nuevas += j.nuevas;
+      existentes += j.existentes;
+    }
+    busy('Actualizando métricas…');
+    await loadCargas();
+    renderCargas();
+    $('recepUpInfo').textContent = `Última recepción: ${nuevas} nuevas · ${existentes} ya existían`;
+    setStatus(`Preservantes cargados: ${nuevas} nuevas, ${existentes} ya existían`);
+  } catch (err) {
+    setStatus('No se pudo cargar el informe de preservantes: ' + err.message, true);
+  } finally {
+    idle();
+    e.target.value = '';
+  }
 });
 
 $('cargaFile').addEventListener('change', async e => {
