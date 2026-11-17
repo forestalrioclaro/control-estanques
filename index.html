@@ -756,10 +756,34 @@ async function onSave(e) {
   }
 }
 
+/* ---------- Excel de la tabla resumen de cargas (vista Resumen imp 01 / 02) ---------- */
+function downloadCargaExcel() {
+  if (!cargaExport) { setStatus('No hay resumen de cargas para exportar', true); return; }
+  const { titulo, dias, tot } = cargaExport;
+  const head = ['Día', 'M3', 'Total CCA por carga', 'Diferencia por estanques', 'Recepción CCA 60%', 'Consumo CCA 60%', 'Total por volumen', 'Total por retención'];
+  const rows = [[titulo], [], head];
+  for (const d of dias) rows.push([fechaCorta(d.fecha), d.m3, d.kg, d.inv ?? '', d.rec, d.cons ?? '', d.cca, d.ret]);
+  rows.push(['Total mes', tot.m3, tot.kg, tot.inv, tot.rec, tot.cons, tot.cca, tot.ret]);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 20 }, { wch: 24 }, { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
+  for (let r = 3; r < rows.length; r++) {
+    for (let c = 1; c < head.length; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (ws[addr] && typeof ws[addr].v === 'number') ws[addr].z = c === 1 ? '#,##0.00' : '#,##0.0';
+    }
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+  const nombre = titulo.replace(/[^A-Za-z0-9ÁÉÍÓÚáéíóúñÑ]+/g, '_').replace(/^_|_$/g, '');
+  XLSX.writeFile(wb, `${nombre}_${todayIso()}.xlsx`);
+  setStatus(`Excel descargado: ${dias.length} días`);
+}
+
 /* ---------- Excel resumen (solo KG CCA 60%) ---------- */
 function downloadExcel() {
   busy('Preparando Excel…');
   try {
+    if (CARGA_VIEWS[view] && CARGA_VIEWS[view].planta != null) { downloadCargaExcel(); return; }
     if (!records.length) { setStatus('No hay datos para exportar', true); return; }
     const idOf = lbl => Object.keys(IMP).find(k => IMP[k].label === lbl);
     const groups = new Map();
@@ -800,6 +824,7 @@ const CARGA_VIEWS = {
 };
 let cargas = [];
 let recepciones = [];
+let cargaExport = null;
 let cargaDay = null;
 const fmt2 = n => Number(n).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fechaCorta = d => `${DOW[(new Date(d + 'T12:00:00').getDay() + 6) % 7]} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
@@ -889,6 +914,7 @@ function renderCargas() {
     return;
   }
   const tot = dias.reduce((a, d) => ({ m3: a.m3 + d.m3, kg: a.kg + d.kg, cca: a.cca + d.cca, ret: a.ret + d.ret, inv: a.inv + (d.inv ?? 0), rec: a.rec + d.rec, cons: a.cons + (d.cons ?? 0) }), { m3: 0, kg: 0, cca: 0, ret: 0, inv: 0, rec: 0, cons: 0 });
+  cargaExport = { titulo: `${v.label} · ${MESES[cur.getMonth()]} ${cur.getFullYear()}`, dias, tot };
   let html = '<table class="ctab"><thead><tr><th>Día</th><th class="num">M3</th><th class="num">Total CCA por carga</th><th class="num">Diferencia por estanques</th><th class="num">Recepción CCA 60%</th><th class="num">Consumo CCA 60%</th><th class="num">Total por volumen</th><th class="num">Total por retención</th></tr></thead><tbody>';
   for (const d of dias) {
     const invTxt = d.inv == null ? '—' : fmt1(d.inv);
