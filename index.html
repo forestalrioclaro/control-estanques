@@ -86,6 +86,13 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
   .g2{grid-template-columns:1fr}
   .g3{grid-template-columns:1fr 1fr}
 }
+.tline{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.tgrid{stroke:#e5e8ec;stroke-width:1}
+.taxis{font-size:11px;fill:var(--muted);font-family:Lato,system-ui,sans-serif}
+#trendBox{overflow-x:auto}
+#trendBox svg{width:100%;height:auto;display:block;min-width:600px}
+.swatch{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+#trendLegend{font-size:.85rem;color:var(--muted);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
@@ -93,6 +100,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
 <header><h1><span class="wm">RIO<span style="color:#fff;opacity:.85">CLARO</span></span> · Control Diario de Estanques · Impregnación</h1></header>
 
 <main>
+  <div class="seg" id="viewSel" style="margin-bottom:12px"><button type="button" data-view="cal" class="on">Calendario</button><button type="button" data-view="trend">Tendencia</button></div>
   <div class="bar">
     <div class="seg" id="impSel">
       <button type="button" data-imp="auto1" class="on">Automático 1</button>
@@ -106,7 +114,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
     </div>
   </div>
 
-  <section class="card">
+  <section class="card" id="calCard">
     <div class="cal-head">
       <button type="button" class="btn" id="prev" aria-label="Mes anterior">◀</button>
       <h2 id="monthTitle"></h2>
@@ -119,6 +127,17 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
       <span class="chip ter">Término</span><span>KG CCA 60% al término de turno</span>
       <span>Haz clic en un día para ingresar o revisar datos</span>
     </div>
+  </section>
+
+  <section class="card hidden" id="trendCard">
+    <div class="cal-head">
+      <button type="button" class="btn" id="tprev" aria-label="Mes anterior">◀</button>
+      <h2 id="tTitle"></h2>
+      <button type="button" class="btn" id="tnext" aria-label="Mes siguiente">▶</button>
+    </div>
+    <div class="seg" id="turnoSel" style="margin-bottom:10px"><button type="button" data-t="Inicio">Inicio</button><button type="button" data-t="Término" class="on">Término</button></div>
+    <div id="trendBox"></div>
+    <div id="trendLegend"></div>
   </section>
 
   <div class="foot">
@@ -464,6 +483,73 @@ function render() {
     </button>`;
   }
   $('cal').innerHTML = html;
+  renderTrend();
+}
+
+/* ---------- Tendencia: una línea por impregnadora ---------- */
+const TREND_COLORS = { auto1: '#00B255', auto2: '#5f6268', manual: '#2659a5' };
+const TREND_DASH   = { auto1: '', auto2: '7 4', manual: '' };
+let trendTurno = 'Término';
+let view = 'cal';
+
+function niceMax(v) {
+  const raw = v * 1.08;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 2.5, 5, 10].map(f => f * pow).find(c => c >= raw);
+}
+
+function renderTrend() {
+  const y = cur.getFullYear(), m = cur.getMonth();
+  const days = new Date(y, m + 1, 0).getDate();
+  $('tTitle').textContent = `${MESES[m]} ${y}`;
+  document.querySelectorAll('#turnoSel button').forEach(b => b.classList.toggle('on', b.dataset.t === trendTurno));
+  const keys = Object.keys(IMP);
+  const series = keys.map(k => ({
+    k,
+    vals: Array.from({ length: days }, (_, i) => {
+      const r = byKey.get(`${isoOf(y, m, i + 1)}|${IMP[k].label}|${trendTurno}`);
+      return (r && r.total != null) ? Number(r.total) : null;
+    })
+  }));
+  const all = series.flatMap(s => s.vals).filter(v => v != null);
+  if (!all.length) {
+    $('trendBox').innerHTML = '<p class="status">Sin registros para este mes y turno.</p>';
+    $('trendLegend').innerHTML = '';
+    return;
+  }
+  const W = 900, H = 380, PL = 70, PR = 20, PT = 24, PB = 40;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const yMax = niceMax(Math.max(...all));
+  const X = d => PL + (days > 1 ? (d - 1) * iw / (days - 1) : iw / 2);
+  const Y = v => PT + ih * (1 - v / yMax);
+  let g = '';
+  for (let t = 0; t <= 5; t++) {
+    const v = yMax * t / 5, yy = Y(v).toFixed(1);
+    g += `<line class="tgrid" x1="${PL}" x2="${W - PR}" y1="${yy}" y2="${yy}"/><text class="taxis" x="${PL - 8}" y="${Number(yy) + 4}" text-anchor="end">${fmt0(v)}</text>`;
+  }
+  for (let d = 1; d <= days; d++) {
+    g += `<text class="taxis" x="${X(d).toFixed(1)}" y="${H - PB + 18}" text-anchor="middle">${d}</text>`;
+  }
+  g += `<text class="taxis" x="${PL}" y="${PT - 8}">KG CCA 60% · ${trendTurno.toLowerCase()} de turno</text>`;
+  let lines = '';
+  for (const s of series) {
+    const color = TREND_COLORS[s.k];
+    let path = '', pen = false;
+    s.vals.forEach((v, i) => {
+      if (v == null) { pen = false; return; }
+      path += `${pen ? 'L' : 'M'}${X(i + 1).toFixed(1)},${Y(v).toFixed(1)}`;
+      pen = true;
+    });
+    const dash = TREND_DASH[s.k] ? ` stroke-dasharray="${TREND_DASH[s.k]}"` : '';
+    lines += `<path class="tline" d="${path}" stroke="${color}"${dash}/>`;
+    s.vals.forEach((v, i) => {
+      if (v == null) return;
+      lines += `<circle cx="${X(i + 1).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3.5" fill="#fff" stroke="${color}" stroke-width="2"><title>${IMP[s.k].label} · ${i + 1}/${m + 1}: ${fmt0(v)} kg</title></circle>`;
+    });
+  }
+  $('trendBox').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de KG CCA 60% por impregnadora">${g}${lines}</svg>`;
+  $('trendLegend').innerHTML = keys.map(k => `<span><span class="swatch" style="background:${TREND_COLORS[k]}"></span>${IMP[k].label}</span>`).join('')
+    + '<span>Los días sin registro quedan en blanco y la línea se corta.</span>';
 }
 
 /* ---------- Formulario ---------- */
@@ -628,6 +714,24 @@ $('impSel').addEventListener('click', e => {
   document.querySelectorAll('#impSel button').forEach(x => x.classList.toggle('on', x === b));
   render();
 });
+$('viewSel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]');
+  if (!b) return;
+  view = b.dataset.view;
+  document.querySelectorAll('#viewSel button').forEach(x => x.classList.toggle('on', x === b));
+  $('calCard').classList.toggle('hidden', view !== 'cal');
+  $('trendCard').classList.toggle('hidden', view !== 'trend');
+  $('impSel').classList.toggle('hidden', view === 'trend');
+  renderTrend();
+});
+$('turnoSel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]');
+  if (!b) return;
+  trendTurno = b.dataset.t;
+  renderTrend();
+});
+$('tprev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); };
+$('tnext').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); render(); };
 $('prev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); };
 $('next').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); render(); };
 $('btnRefresh').onclick = () => refresh('Leyendo datos…', 'Datos actualizados');
