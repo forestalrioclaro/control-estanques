@@ -63,7 +63,9 @@ main{max-width:1100px;margin:0 auto;padding:16px}
 .col-head strong{font-size:.95rem}
 .col .state{font-size:.78rem;color:var(--muted);min-height:1.1em}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .full{grid-column:1 / -1}
+.ro{background:#f1f4f7;color:#374151;font-variant-numeric:tabular-nums}
 label{display:flex;flex-direction:column;font-size:.82rem;color:var(--muted);gap:4px;font-weight:600}
 input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px solid #c6ced8;border-radius:8px;color:var(--ink);background:#fff;width:100%}
 .hidden{display:none !important}
@@ -81,6 +83,7 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
   .turnos{grid-template-columns:1fr}
   .top{grid-template-columns:1fr}
   .g2{grid-template-columns:1fr}
+  .g3{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -146,17 +149,20 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
           <span class="chip ini">Inicio</span>
         </div>
         <div class="state" id="i_state"></div>
-        <div class="g2 auto-only">
-          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="i_n1"></label>
-          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 2.167" id="i_c1"></label>
-          <label>Estanque 2 · Nivel<input type="number" step="any" inputmode="decimal" id="i_n2"></label>
-          <label>Estanque 2 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 3.071" id="i_c2"></label>
-          <label class="full">Estanque CCA · kg (balanza)<input type="number" step="any" inputmode="decimal" id="i_cca"></label>
+        <div class="g3 auto-only">
+          <label>Est. 1 · Nivel<input type="text" inputmode="decimal" autocomplete="off" id="i_n1"></label>
+          <label>Est. 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 2.167" id="i_c1"></label>
+          <label>Est. 1 · kg activos<input class="ro" readonly tabindex="-1" id="i_a1"></label>
+          <label>Est. 2 · Nivel<input type="text" inputmode="decimal" autocomplete="off" id="i_n2"></label>
+          <label>Est. 2 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 3.071" id="i_c2"></label>
+          <label>Est. 2 · kg activos<input class="ro" readonly tabindex="-1" id="i_a2"></label>
+          <label class="full">Estanque CCA · kg (balanza)<input type="text" inputmode="decimal" autocomplete="off" id="i_cca"></label>
         </div>
-        <div class="g2 manual-only">
-          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="i_mn1"></label>
-          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 1.819" id="i_mc1"></label>
-          <label>CCA · Altura<input type="number" step="any" inputmode="decimal" id="i_alt"></label>
+        <div class="g3 manual-only">
+          <label>Est. 1 · Nivel<input type="text" inputmode="decimal" autocomplete="off" id="i_mn1"></label>
+          <label>Est. 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 1.819" id="i_mc1"></label>
+          <label>Est. 1 · kg activos<input class="ro" readonly tabindex="-1" id="i_ma1"></label>
+          <label>CCA · Altura<input type="text" inputmode="decimal" autocomplete="off" id="i_alt"></label>
           <label>CCA · Densidad<input type="number" step="any" inputmode="decimal" id="i_dens"></label>
         </div>
         <div class="calc" id="i_calc"></div>
@@ -169,17 +175,20 @@ input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px 
           <span class="chip ter">Término</span>
         </div>
         <div class="state" id="t_state"></div>
-        <div class="g2 auto-only">
-          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="t_n1"></label>
-          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 2.167" id="t_c1"></label>
-          <label>Estanque 2 · Nivel<input type="number" step="any" inputmode="decimal" id="t_n2"></label>
-          <label>Estanque 2 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 3.180" id="t_c2"></label>
-          <label class="full">Estanque CCA · kg (balanza)<input type="number" step="any" inputmode="decimal" id="t_cca"></label>
+        <div class="g3 auto-only">
+          <label>Est. 1 · Nivel<input type="text" inputmode="decimal" autocomplete="off" id="t_n1"></label>
+          <label>Est. 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 2.167" id="t_c1"></label>
+          <label>Est. 1 · kg activos<input class="ro" readonly tabindex="-1" id="t_a1"></label>
+          <label>Est. 2 · Nivel<input type="text" inputmode="decimal" autocomplete="off" id="t_n2"></label>
+          <label>Est. 2 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 3.180" id="t_c2"></label>
+          <label>Est. 2 · kg activos<input class="ro" readonly tabindex="-1" id="t_a2"></label>
+          <label class="full">Estanque CCA · kg (balanza)<input type="text" inputmode="decimal" autocomplete="off" id="t_cca"></label>
         </div>
-        <div class="g2 manual-only">
-          <label>Estanque 1 · Nivel<input type="number" step="any" inputmode="decimal" id="t_mn1"></label>
-          <label>Estanque 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 1.780" id="t_mc1"></label>
-          <label>CCA · Altura<input type="number" step="any" inputmode="decimal" id="t_alt"></label>
+        <div class="g3 manual-only">
+          <label>Est. 1 · Nivel<input type="text" inputmode="decimal" autocomplete="off" id="t_mn1"></label>
+          <label>Est. 1 · C (%)<input type="number" step="0.00001" inputmode="decimal" placeholder="ej: 1.780" id="t_mc1"></label>
+          <label>Est. 1 · kg activos<input class="ro" readonly tabindex="-1" id="t_ma1"></label>
+          <label>CCA · Altura<input type="text" inputmode="decimal" autocomplete="off" id="t_alt"></label>
           <label>CCA · Densidad<input type="number" step="any" inputmode="decimal" id="t_dens"></label>
         </div>
         <div class="calc" id="t_calc"></div>
@@ -285,12 +294,24 @@ function calcRec(tipo, d) {
 }
 
 /* Lee un turno del formulario. pre = 'i' (inicio) o 't' (término). C viene en % y se pasa a decimal */
+/* Números con separador de miles (ej: 51.228). Se leen quitando los puntos de miles. */
+function parseNum(s) {
+  if (s == null) return null;
+  const t = String(s).trim();
+  if (t === '') return null;
+  const v = Number(t.replace(/\./g, '').replace(',', '.'));
+  return Number.isNaN(v) ? null : v;
+}
+function fmtInt(n) {
+  return (n == null || n === '') ? '' : Number(n).toLocaleString('es-CL', { maximumFractionDigits: 2 });
+}
 function readCol(pre, tipo) {
-  const raw = id => { const x = $(pre + '_' + id).value; return x === '' ? null : Number(x); };
+  const int = id => parseNum($(pre + '_' + id).value);          // nivel, altura, CCA kg
+  const num = id => { const x = $(pre + '_' + id).value; return x === '' ? null : Number(x); };  // C (%) y densidad
   if (tipo === 'auto') {
-    return { n1: raw('n1'), c1: pctToDec(raw('c1')), n2: raw('n2'), c2: pctToDec(raw('c2')), ccaBalanza: raw('cca'), altura: null, dens: null };
+    return { n1: int('n1'), c1: pctToDec(num('c1')), n2: int('n2'), c2: pctToDec(num('c2')), ccaBalanza: int('cca'), altura: null, dens: null };
   }
-  return { n1: raw('mn1'), c1: pctToDec(raw('mc1')), n2: null, c2: null, ccaBalanza: null, altura: raw('alt'), dens: raw('dens') };
+  return { n1: int('mn1'), c1: pctToDec(num('mc1')), n2: null, c2: null, ccaBalanza: null, altura: int('alt'), dens: num('dens') };
 }
 
 function fieldId(pre, f, tipo) {
@@ -315,11 +336,9 @@ function complete(tipo, d) {
 
 function calcHtml(tipo, c) {
   const f = x => x == null ? '—' : fmt1(x);
-  let rows = `<tr><td>Est. 1 · kg activos</td><td>${f(c.act1)}</td></tr>
-              <tr><td>Est. 1 · KG CCA 60%</td><td>${f(c.k1)}</td></tr>`;
+  let rows = `<tr><td>Est. 1 · KG CCA 60%</td><td>${f(c.k1)}</td></tr>`;
   if (tipo === 'auto') {
-    rows += `<tr><td>Est. 2 · kg activos</td><td>${f(c.act2)}</td></tr>
-             <tr><td>Est. 2 · KG CCA 60%</td><td>${f(c.k2)}</td></tr>
+    rows += `<tr><td>Est. 2 · KG CCA 60%</td><td>${f(c.k2)}</td></tr>
              <tr><td>CCA · kg (balanza)</td><td>${f(c.cca)}</td></tr>`;
   } else {
     rows += `<tr><td>CCA · altura × densidad</td><td>${f(c.cca)}</td></tr>`;
@@ -332,7 +351,15 @@ function updateCalc() {
   const tipo = IMP[imp].tipo;
   for (const t of TURNOS) {
     const d = readCol(t.pre, tipo);
-    $(t.pre + '_calc').innerHTML = calcHtml(tipo, calcRec(tipo, d));
+    const c = calcRec(tipo, d);
+    const f = x => x == null ? '' : fmt1(x);
+    if (tipo === 'auto') {
+      $(t.pre + '_a1').value = f(c.act1);
+      $(t.pre + '_a2').value = f(c.act2);
+    } else {
+      $(t.pre + '_ma1').value = f(c.act1);
+    }
+    $(t.pre + '_calc').innerHTML = calcHtml(tipo, c);
   }
 }
 
@@ -458,12 +485,12 @@ function loadFormFor() {
   for (const t of TURNOS) {
     const rec = byKey.get(`${editingDate}|${IMP[imp].label}|${t.key}`);
     if (tipo === 'auto') {
-      setVal(t.pre + '_n1', rec?.n1); setVal(t.pre + '_c1', decToPct(rec?.c1));
-      setVal(t.pre + '_n2', rec?.n2); setVal(t.pre + '_c2', decToPct(rec?.c2));
-      setVal(t.pre + '_cca', rec?.ccaBalanza);
+      setVal(t.pre + '_n1', fmtInt(rec?.n1)); setVal(t.pre + '_c1', decToPct(rec?.c1));
+      setVal(t.pre + '_n2', fmtInt(rec?.n2)); setVal(t.pre + '_c2', decToPct(rec?.c2));
+      setVal(t.pre + '_cca', fmtInt(rec?.ccaBalanza));
     } else {
-      setVal(t.pre + '_mn1', rec?.n1); setVal(t.pre + '_mc1', decToPct(rec?.c1));
-      setVal(t.pre + '_alt', rec?.altura); setVal(t.pre + '_dens', rec?.dens);
+      setVal(t.pre + '_mn1', fmtInt(rec?.n1)); setVal(t.pre + '_mc1', decToPct(rec?.c1));
+      setVal(t.pre + '_alt', fmtInt(rec?.altura)); setVal(t.pre + '_dens', rec?.dens);
     }
     $(t.pre + '_state').textContent = rec ? 'Ya registrado: al guardar se reemplaza.' : 'Sin registro todavía.';
   }
@@ -576,6 +603,12 @@ function downloadExcel() {
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+    for (let r = 1; r < rows.length; r++) {
+      for (const c of [2, 3]) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (ws[addr] && typeof ws[addr].v === 'number') ws[addr].z = '#,##0.0';
+      }
+    }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'KG CCA 60%');
     XLSX.writeFile(wb, `Resumen_KG_CCA60_${todayIso()}.xlsx`);
@@ -600,10 +633,15 @@ $('cal').addEventListener('click', e => {
   const b = e.target.closest('button[data-date]');
   if (b) openForm(b.dataset.date);
 });
+const INT_FIELDS = ['n1','n2','cca','mn1','alt'];
 TURNOS.forEach(t => {
   ALL_FIELDS.forEach(f => {
     const el = $(t.pre + '_' + f);
-    if (el) el.addEventListener('input', () => { updateCalc(); saveDraft(); });
+    if (!el) return;
+    el.addEventListener('input', () => { updateCalc(); saveDraft(); });
+    if (INT_FIELDS.includes(f)) {
+      el.addEventListener('blur', () => { const v = parseNum(el.value); el.value = fmtInt(v); });
+    }
   });
 });
 $('fResp').addEventListener('input', saveDraft);
