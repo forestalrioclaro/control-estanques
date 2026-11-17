@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control Diario Estanques · Impregnación</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1d2733;--muted:#6b7785;--line:#dde3ea;--accent:#1f6f4a;--ini:#1d4ed8;--ter:#b45309;--warn:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--accent);color:#fff;padding:14px 20px}
+header h1{margin:0;font-size:1.15rem;font-weight:700}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.seg{display:inline-flex;flex-wrap:wrap;background:#e3e9ef;border-radius:10px;padding:4px;gap:2px}
+.seg button{border:0;background:transparent;padding:9px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);font-size:.95rem}
+.seg button.on{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+.cal-head h2{margin:0;font-size:1.05rem;text-transform:capitalize}
+.btn{border:1px solid #c6ced8;background:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit;font-size:.9rem;color:var(--ink)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dow{font-size:.75rem;color:var(--muted);text-align:center;font-weight:600;padding:4px 0}
+.day{min-height:80px;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;background:#fff;display:flex;flex-direction:column;gap:3px;text-align:left;font:inherit;color:inherit}
+.day:hover{border-color:var(--accent)}
+.day.empty{visibility:hidden;cursor:default}
+.day.today{outline:2px solid var(--accent)}
+.day.weekend{background:#fafbfc}
+.dnum{font-size:.8rem;font-weight:700}
+.val{font-size:.78rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.val.ini{color:var(--ini)}
+.val.ter{color:var(--ter)}
+.miss{font-size:.7rem;color:#9aa4b0}
+.legend{font-size:.8rem;color:var(--muted);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.status{font-size:.85rem;color:var(--muted)}
+.status.err{color:var(--warn)}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:12px;z-index:10}
+.modal.open{display:flex}
+.sheet{background:#fff;border-radius:14px;width:min(580px,100%);max-height:94vh;overflow:auto;padding:18px}
+.sheet h3{margin:0 0 2px;font-size:1.05rem}
+.sub{color:var(--muted);font-size:.88rem;margin-bottom:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g2 .full{grid-column:1 / -1}
+label{display:flex;flex-direction:column;font-size:.82rem;color:var(--muted);gap:4px;font-weight:600}
+input,select,textarea{font:inherit;font-size:.95rem;padding:8px 10px;border:1px solid #c6ced8;border-radius:8px;color:var(--ink);background:#fff;width:100%}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px}
+legend{font-size:.85rem;font-weight:700;padding:0 6px}
+.hidden{display:none !important}
+.calc{background:#f0f7f3;border-radius:10px;padding:10px 12px;font-size:.88rem;margin-bottom:12px}
+.calc table{width:100%;border-collapse:collapse}
+.calc td{padding:3px 0}
+.calc td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.calc tr.tot td{font-weight:700;border-top:1px solid #b9d9c8;padding-top:6px}
+.note{font-size:.82rem;color:var(--muted);margin-bottom:10px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
+@media (max-width:640px){
+  .day{min-height:64px;padding:4px}
+  .val{font-size:.66rem}
+  .grid{gap:3px}
+  .g2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header><h1>Control Diario de Estanques · Impregnación</h1></header>
+
+<main>
+  <div class="bar">
+    <div class="seg" id="impSel">
+      <button type="button" data-imp="auto1" class="on">Automático 1</button>
+      <button type="button" data-imp="auto2">Automático 2</button>
+      <button type="button" data-imp="manual">Manual</button>
+    </div>
+    <div class="status" id="status">Cargando datos…</div>
+  </div>
+
+  <section class="card">
+    <div class="cal-head">
+      <button type="button" class="btn" id="prev" aria-label="Mes anterior">◀</button>
+      <h2 id="monthTitle"></h2>
+      <button type="button" class="btn" id="next" aria-label="Mes siguiente">▶</button>
+    </div>
+    <div class="grid" id="dows"></div>
+    <div class="grid" id="cal"></div>
+    <div class="legend">
+      <span><b style="color:var(--ini)">Ini</b> = KG CCA 60% inicio de turno</span>
+      <span><b style="color:var(--ter)">Ter</b> = KG CCA 60% término de turno</span>
+      <span>Haz clic en un día para ingresar o revisar datos</span>
+    </div>
+  </section>
+
+  <div class="foot">
+    <button type="button" class="btn primary" id="btnExcel">⬇ Descargar Excel resumen</button>
+    <span class="status" id="excelInfo">Incluye todos los días: fecha, impregnadora, KG CCA 60% inicio y término.</span>
+  </div>
+</main>
+
+<!-- Formulario -->
+<div class="modal" id="modal">
+  <form class="sheet" id="form" autocomplete="off">
+    <h3 id="fTitle"></h3>
+    <div class="sub" id="fSub"></div>
+    <div class="note" id="fNote"></div>
+
+    <div class="g2">
+      <label>Turno
+        <select id="fTurno">
+          <option value="Inicio">Inicio de turno</option>
+          <option value="Término">Término de turno</option>
+        </select>
+      </label>
+      <label>Responsable
+        <input id="fResp" placeholder="Nombre de quien registra" maxlength="60">
+      </label>
+    </div>
+
+    <fieldset style="margin-top:12px">
+      <legend>Estanques</legend>
+      <div class="g2">
+        <label>Estanque 1 · Nivel
+          <input type="number" step="any" inputmode="decimal" id="n1">
+        </label>
+        <label>Estanque 1 · C%
+          <input type="number" step="any" inputmode="decimal" id="c1">
+        </label>
+
+        <!-- Solo automáticos -->
+        <div class="g2 full" id="blkAuto" style="display:contents">
+          <label>Estanque 2 · Nivel
+            <input type="number" step="any" inputmode="decimal" id="n2">
+          </label>
+          <label>Estanque 2 · C%
+            <input type="number" step="any" inputmode="decimal" id="c2">
+          </label>
+          <label class="full" style="grid-column:1 / -1">Estanque CCA · kg (balanza)
+            <input type="number" step="any" inputmode="decimal" id="cca">
+          </label>
+        </div>
+
+        <!-- Solo manual -->
+        <div id="blkManual" class="full" style="display:contents">
+          <label>Estanque CCA · Altura
+            <input type="number" step="any" inputmode="decimal" id="alt">
+          </label>
+          <label>Estanque CCA · Densidad
+            <input type="number" step="any" inputmode="decimal" id="dens">
+          </label>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="calc" id="calc"></div>
+
+    <label>Observaciones
+      <textarea id="fObs" rows="2" maxlength="300"></textarea>
+    </label>
+
+    <div class="actions">
+      <button type="button" class="btn" id="fCancel">Cancelar</button>
+      <button type="submit" class="btn primary" id="fSave">Guardar</button>
+    </div>
+    <div class="status" id="fMsg" style="margin-top:8px"></div>
+  </form>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURACIÓN: pega aquí la URL del Apps Script y el token
+   ========================================================= */
+const CONFIG = {
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwMrfld9mSD3PMcIxv57Z4MWXmwZE2nYGA55T1ewUEkinTj5kjOVoSCPdad4xjbBWk/exec',
+  TOKEN: 'imp-estanques-2026-x7Kq9'   // igual al TOKEN de Code.gs
+};
+
+const IMP = {
+  auto1:  { label: 'Automático 1',      tipo: 'auto'   },
+  auto2:  { label: 'Automático 2',      tipo: 'auto'   },
+  manual: { label: 'Manual (Amarillo)', tipo: 'manual' }
+};
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+let imp = 'auto1';
+let cur = new Date();
+let records = [];
+let byKey = new Map();
+let editingDate = null;
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const isoOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+const todayIso = () => { const t = new Date(); return isoOf(t.getFullYear(), t.getMonth(), t.getDate()); };
+const fmt0 = n => Number(n).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+const fmt1 = n => Number(n).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const round2 = x => Math.round(x * 100) / 100;
+
+function setStatus(msg, err = false) {
+  const el = $('status');
+  el.textContent = msg;
+  el.className = 'status' + (err ? ' err' : '');
+}
+
+/* ---------- Cálculos (replican las fórmulas del Excel) ---------- */
+// Estanque: kg activos = Nivel x C%  ;  KG CCA 60% = kg activos / 0.6
+// CCA automático: kg de balanza (directo)
+// CCA manual: Altura x Densidad
+function calcRec(tipo, d) {
+  const act1 = (d.n1 != null && d.c1 != null) ? d.n1 * d.c1 : null;
+  const k1 = act1 != null ? act1 / 0.6 : null;
+  let act2 = null, k2 = null, cca = null;
+  if (tipo === 'auto') {
+    act2 = (d.n2 != null && d.c2 != null) ? d.n2 * d.c2 : null;
+    k2 = act2 != null ? act2 / 0.6 : null;
+    cca = d.ccaBalanza;
+  } else {
+    cca = (d.altura != null && d.dens != null) ? d.altura * d.dens : null;
+  }
+  const complete = k1 != null && cca != null && (tipo === 'manual' || k2 != null);
+  const total = complete ? round2(k1 + (k2 || 0) + cca) : null;
+  return {
+    act1: act1 != null ? round2(act1) : null,
+    k1: k1 != null ? round2(k1) : null,
+    act2: act2 != null ? round2(act2) : null,
+    k2: k2 != null ? round2(k2) : null,
+    cca: cca != null ? round2(cca) : null,
+    total
+  };
+}
+
+function readForm() {
+  const v = id => { const x = $(id).value; return x === '' ? null : Number(x); };
+  return {
+    n1: v('n1'), c1: v('c1'), n2: v('n2'), c2: v('c2'),
+    ccaBalanza: v('cca'), altura: v('alt'), dens: v('dens')
+  };
+}
+
+function updateCalc() {
+  const tipo = IMP[imp].tipo;
+  const d = readForm();
+  const c = calcRec(tipo, d);
+  const f = x => x == null ? '—' : fmt1(x);
+  let rows = `
+    <tr><td>Estanque 1 · kg activos</td><td>${f(c.act1)}</td></tr>
+    <tr><td>Estanque 1 · KG CCA 60%</td><td>${f(c.k1)}</td></tr>`;
+  if (tipo === 'auto') {
+    rows += `
+    <tr><td>Estanque 2 · kg activos</td><td>${f(c.act2)}</td></tr>
+    <tr><td>Estanque 2 · KG CCA 60%</td><td>${f(c.k2)}</td></tr>
+    <tr><td>CCA · kg (balanza)</td><td>${f(c.cca)}</td></tr>`;
+  } else {
+    rows += `
+    <tr><td>CCA · altura × densidad</td><td>${f(c.cca)}</td></tr>`;
+  }
+  rows += `<tr class="tot"><td>KG CCA 60% TOTAL</td><td>${f(c.total)}</td></tr>`;
+  $('calc').innerHTML = `<table>${rows}</table>`;
+}
+
+/* ---------- Comunicación con Google Sheets (Apps Script) ---------- */
+function checkConfig() {
+  if (!CONFIG.SCRIPT_URL || CONFIG.SCRIPT_URL.startsWith('PEGAR')) {
+    throw new Error('Falta configurar SCRIPT_URL en index.html');
+  }
+}
+
+async function parseJson(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch (e) { throw new Error('Respuesta no válida. Revisa que el Apps Script esté publicado con acceso "Cualquier persona".'); }
+}
+
+async function loadAll() {
+  checkConfig();
+  const url = `${CONFIG.SCRIPT_URL}?action=list&token=${encodeURIComponent(CONFIG.TOKEN)}`;
+  const j = await parseJson(await fetch(url));
+  if (!j.ok) throw new Error(j.error || 'Error al cargar');
+  records = j.records;
+  byKey = new Map();
+  for (const r of records) byKey.set(`${r.fecha}|${r.impLabel}|${r.turno}`, r);
+}
+
+async function saveRecord(rec) {
+  checkConfig();
+  const res = await fetch(CONFIG.SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CONFIG.TOKEN, action: 'upsert', record: rec })
+  });
+  const j = await parseJson(res);
+  if (!j.ok) throw new Error(j.error || 'No se pudo guardar');
+}
+
+/* ---------- Calendario ---------- */
+function renderDows() {
+  $('dows').innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+}
+
+function render() {
+  const y = cur.getFullYear(), m = cur.getMonth();
+  $('monthTitle').textContent = `${MESES[m]} ${y}`;
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7; // semana parte en lunes
+  const days = new Date(y, m + 1, 0).getDate();
+  const today = todayIso();
+  let html = '';
+  for (let i = 0; i < offset; i++) html += '<div class="day empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const ds = isoOf(y, m, d);
+    const ini = byKey.get(`${ds}|${IMP[imp].label}|Inicio`);
+    const ter = byKey.get(`${ds}|${IMP[imp].label}|Término`);
+    const wd = new Date(y, m, d).getDay();
+    const cls = 'day' + (ds === today ? ' today' : '') + (wd === 0 || wd === 6 ? ' weekend' : '');
+    html += `<button type="button" class="${cls}" data-date="${ds}">
+      <span class="dnum">${d}</span>
+      ${ini ? `<span class="val ini">Ini ${ini.total != null ? fmt0(ini.total) : '—'}</span>` : ''}
+      ${ter ? `<span class="val ter">Ter ${ter.total != null ? fmt0(ter.total) : '—'}</span>` : ''}
+      ${!ini && !ter ? '<span class="miss">sin registro</span>' : ''}
+    </button>`;
+  }
+  $('cal').innerHTML = html;
+}
+
+/* ---------- Formulario ---------- */
+function openForm(ds) {
+  editingDate = ds;
+  const [y, m, d] = ds.split('-').map(Number);
+  $('fTitle').textContent = `${IMP[imp].label} · ${d} de ${MESES[m - 1]} de ${y}`;
+  $('fSub').textContent = 'KG CCA 60% · Ingreso de datos del laboratorio';
+  $('fTurno').value = 'Inicio';
+  loadFormFor();
+  $('fMsg').textContent = '';
+  $('modal').classList.add('open');
+}
+
+function loadFormFor() {
+  const turno = $('fTurno').value;
+  const rec = byKey.get(`${editingDate}|${IMP[imp].label}|${turno}`);
+  const tipo = IMP[imp].tipo;
+  $('blkAuto').classList.toggle('hidden', tipo !== 'auto');
+  $('blkManual').classList.toggle('hidden', tipo !== 'manual');
+  const set = (id, val) => { $(id).value = (val == null) ? '' : val; };
+  set('n1', rec?.n1); set('c1', rec?.c1);
+  set('n2', rec?.n2); set('c2', rec?.c2);
+  set('cca', rec?.ccaBalanza); set('alt', rec?.altura); set('dens', rec?.dens);
+  $('fObs').value = rec?.obs || '';
+  $('fResp').value = rec?.responsable || localStorage.getItem('ultimoResp') || '';
+  $('fNote').textContent = rec
+    ? `Ya existe un registro de ${turno.toLowerCase()} de turno. Al guardar se reemplaza.`
+    : `Sin registro de ${turno.toLowerCase()} de turno para este día.`;
+  updateCalc();
+}
+
+function closeForm() { $('modal').classList.remove('open'); }
+
+async function onSave(e) {
+  e.preventDefault();
+  const tipo = IMP[imp].tipo;
+  const turno = $('fTurno').value;
+  const d = readForm();
+  const required = tipo === 'auto'
+    ? [d.n1, d.c1, d.n2, d.c2, d.ccaBalanza]
+    : [d.n1, d.c1, d.altura, d.dens];
+  if (required.some(x => x == null || Number.isNaN(x))) {
+    $('fMsg').className = 'status err';
+    $('fMsg').textContent = 'Completa todos los campos antes de guardar.';
+    return;
+  }
+  const c = calcRec(tipo, d);
+  const resp = $('fResp').value.trim();
+  const rec = {
+    fecha: editingDate,
+    impLabel: IMP[imp].label,
+    turno,
+    n1: d.n1, c1: d.c1, act1: c.act1, k1: c.k1,
+    n2: tipo === 'auto' ? d.n2 : null,
+    c2: tipo === 'auto' ? d.c2 : null,
+    act2: c.act2, k2: c.k2,
+    ccaBalanza: tipo === 'auto' ? d.ccaBalanza : null,
+    altura: tipo === 'manual' ? d.altura : null,
+    dens: tipo === 'manual' ? d.dens : null,
+    cca: c.cca,
+    total: c.total,
+    responsable: resp,
+    obs: $('fObs').value.trim()
+  };
+  const btn = $('fSave');
+  btn.disabled = true;
+  $('fMsg').className = 'status';
+  $('fMsg').textContent = 'Guardando…';
+  try {
+    await saveRecord(rec);
+    try { if (resp) localStorage.setItem('ultimoResp', resp); } catch (_) {}
+    await loadAll();
+    render();
+    closeForm();
+    setStatus(`Guardado: ${IMP[imp].label} · ${turno} · ${editingDate}`);
+  } catch (err) {
+    $('fMsg').className = 'status err';
+    $('fMsg').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------- Excel resumen (solo KG CCA 60%) ---------- */
+function downloadExcel() {
+  if (!records.length) { setStatus('No hay datos para exportar', true); return; }
+  const idOf = lbl => Object.keys(IMP).find(k => IMP[k].label === lbl);
+  const groups = new Map();
+  for (const r of records) {
+    const id = idOf(r.impLabel) || r.impLabel;
+    const key = `${r.fecha}|${id}`;
+    if (!groups.has(key)) groups.set(key, { fecha: r.fecha, label: r.impLabel, ord: Object.keys(IMP).indexOf(id), ini: null, ter: null });
+    const g = groups.get(key);
+    if (r.turno === 'Inicio') g.ini = r.total; else g.ter = r.total;
+  }
+  const list = [...groups.values()].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.ord - b.ord);
+  const rows = [['Fecha', 'Impregnadora', 'KG CCA 60% Inicio', 'KG CCA 60% Término']];
+  for (const g of list) rows.push([g.fecha, g.label, g.ini, g.ter]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'KG CCA 60%');
+  XLSX.writeFile(wb, `Resumen_KG_CCA60_${todayIso()}.xlsx`);
+  setStatus(`Excel descargado con ${list.length} filas`);
+}
+
+/* ---------- Eventos ---------- */
+$('impSel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-imp]');
+  if (!b) return;
+  imp = b.dataset.imp;
+  document.querySelectorAll('#impSel button').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+$('prev').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); };
+$('next').onclick = () => { cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); render(); };
+$('cal').addEventListener('click', e => {
+  const b = e.target.closest('button[data-date]');
+  if (b) openForm(b.dataset.date);
+});
+$('fTurno').onchange = loadFormFor;
+['n1','c1','n2','c2','cca','alt','dens'].forEach(id => $(id).addEventListener('input', updateCalc));
+$('fCancel').onclick = closeForm;
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeForm(); });
+$('form').addEventListener('submit', onSave);
+$('btnExcel').onclick = downloadExcel;
+
+/* ---------- Inicio ---------- */
+renderDows();
+render();
+loadAll()
+  .then(() => { render(); setStatus(`Datos cargados (${records.length} registros)`); })
+  .catch(err => setStatus(err.message, true));
+</script>
+</body>
+</html>
