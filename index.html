@@ -827,8 +827,42 @@ const CARGAS_FROM = '2026-11-01';
 const CARGA_VIEWS = {
   car1: { planta: 1,    label: 'Automático 1' },
   car2: { planta: 2,    label: 'Automático 2' },
-  carm: { planta: null, label: 'Manual' }
+  carm: { planta: 3,    label: 'Manual N°3' }
 };
+/* Impregnadora 03 (hoja "Control Prod. Manual N°3"): desde enero 2026 */
+const MANUAL_FROM = '2026-01-01';
+function fechaDeCelda(v) {
+  if (v instanceof Date) return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+  if (typeof v === 'number') { const d = XLSX.SSF.parse_date_code(v); return `${d.y}-${pad(d.m)}-${pad(d.d)}`; }
+  const s = String(v || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+/* Mapeo: KILOS SAL X M3 = CCA 60% · VOLUMEN UTILIZADO = Volumen · VOLUMEN M3 = M3 · Concentración (%) = Solución (ej. 1,72 = 1,72%) */
+function parseManual3(ws) {
+  const recs = [];
+  for (const raw of XLSX.utils.sheet_to_json(ws, { defval: null })) {
+    const r = {};
+    for (const k of Object.keys(raw)) r[k.trim().toUpperCase()] = raw[k];
+    if (Number(r['IMP.']) !== 3) continue;
+    const fecha = fechaDeCelda(r['FECHA']);
+    if (!fecha || fecha < MANUAL_FROM) continue;
+    const nCarga = r['N° CARGAS'];
+    if (nCarga == null || nCarga === '') continue;
+    const producto = String(r['PRODUCTOS'] || '').trim();
+    const cantidad = Number(r['CANTIDAD']) || 0;
+    const m3 = Number(r['VOLUMEN M3']) || 0;
+    const ret = Number(r['RETENCION TEORICA']) || 0;
+    const kgAj = m3 * ret / 0.6;
+    const clave = [fecha, 3, nCarga, producto, r['DIMENSION'], cantidad, m3, kgAj].join('|');
+    recs.push({
+      clave, fecha, hora: '', planta: 3, nCarga, producto, cantidad, m3, kgAj,
+      sol: Number(r['CONCENTRACIÓN (%)']) || 0,
+      vol: Number(r['VOLUMEN UTILIZADO']) || 0,
+      ret
+    });
+  }
+  return recs;
+}
 let cargas = [];
 let recepciones = [];
 let cargaExport = null;
@@ -867,7 +901,7 @@ function ccaDeRetencion(lines) {
 /* Diferencia de inventario del día: KG CCA 60% Inicio − Término (desde los registros de la app) */
 function difInvDia(fecha) {
   const v = CARGA_VIEWS[view];
-  const key = view === 'car1' ? 'auto1' : 'auto2';
+  const key = view === 'car1' ? 'auto1' : view === 'car2' ? 'auto2' : 'manual';
   const ini = byKey.get(`${fecha}|${IMP[key].label}|Inicio`);
   const ter = byKey.get(`${fecha}|${IMP[key].label}|Término`);
   if (!v || !ini || !ter || ini.total == null || ter.total == null) return null;
@@ -1086,8 +1120,9 @@ $('cargaFile').addEventListener('change', async e => {
   try {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array' });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
-    const recs = [];
+    const manualName = wb.SheetNames.find(n => /manual\s*n[°º]?\s*3/i.test(n));
+    const recs = manualName ? parseManual3(wb.Sheets[manualName]) : [];
+    const rows = manualName ? [] : XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
     for (const r of rows) {
       const ts = tsOf(r['Fecha Carga']);
       if (!ts) continue;
